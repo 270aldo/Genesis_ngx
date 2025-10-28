@@ -1,0 +1,43 @@
+name: Deploy Cloud Run
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+      - release/**
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name }}
+    if: github.repository_owner != 'github-actions'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Configure gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build and push image
+        run: |
+          gcloud builds submit --tag "${{ vars.GAR_REGION }}/genesis-ngx/nexus:${{ github.sha }}" agents/nexus
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy nexus --image "${{ vars.GAR_REGION }}/genesis-ngx/nexus:${{ github.sha }}" \
+            --region=${{ vars.GCP_REGION }} \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --platform=managed \
+            --allow-unauthenticated=false

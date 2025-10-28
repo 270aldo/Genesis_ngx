@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environments
+.venv/
+env/
+venv/
+
+# Node/Expo (por si se agrega después)
+node_modules/
+.expo/
+dist/
+*.log
+
+# Supabase
+.supabase/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Terraform / IaC (futuros)
+.terraform/
+terraform.tfstate*
+
+# Secrets
+*.env
+*.env.*
+supabase/service_role.key

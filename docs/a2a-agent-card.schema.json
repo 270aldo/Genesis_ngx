@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://genesis-ngx.dev/schemas/a2a-agent-card.json",
+  "title": "A2A Agent Card",
+  "type": "object",
+  "required": [
+    "id",
+    "version",
+    "capabilities",
+    "limits",
+    "privacy",
+    "auth"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Identificador único del agente (URI o slug)."
+    },
+    "version": {
+      "type": "string",
+      "description": "Versión semántica de la tarjeta A2A (semver)."
+    },
+    "description": {
+      "type": "string",
+      "description": "Descripción breve de las capacidades del agente."
+    },
+    "capabilities": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "inputs": {
+      "type": "object",
+      "description": "Schema descriptivo de parámetros de entrada.",
+      "additionalProperties": true
+    },
+    "outputs": {
+      "type": "object",
+      "description": "Schema descriptivo de resultados.",
+      "additionalProperties": true
+    },
+    "limits": {
+      "type": "object",
+      "required": [
+        "max_input_tokens",
+        "max_output_tokens",
+        "max_latency_ms",
+        "max_cost_per_invoke"
+      ],
+      "properties": {
+        "max_input_tokens": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_output_tokens": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_latency_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_cost_per_invoke": {
+          "type": "number",
+          "minimum": 0
+        },
+        "rate_limit_rpm": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "required": ["pii", "phi"],
+      "properties": {
+        "pii": { "type": "boolean" },
+        "phi": { "type": "boolean" },
+        "data_retention_days": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "required": ["method"],
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": ["oidc", "api_key", "none"]
+        },
+        "issuer": { "type": "string" },
+        "audience": { "type": "string" },
+        "scopes": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "degradation": {
+      "type": "object",
+      "properties": {
+        "on_timeout": { "type": "string" },
+        "on_budget_exceeded": { "type": "string" },
+        "fallback_agent": { "type": "string" }
+      }
+    }
+  },
+  "additionalProperties": false
+}
