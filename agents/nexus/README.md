@@ -7,7 +7,7 @@ Orquestador principal del sistema multi-agente de bienestar, construido con **Go
 NEXUS está construido usando el patrón **Coordinator/Specialist** del Google Agent Development Kit (ADK):
 
 ```
-NEXUS (LlmAgent - Gemini 2.0 Flash)
+NEXUS (LlmAgent - Gemini 2.5 Pro)
 ├── agent.py          → Definición del agente ADK
 ├── prompt.py         → System instructions
 ├── a2a_wrapper.py    → Wrapper para exponer A2A v0.3
@@ -18,7 +18,7 @@ NEXUS (LlmAgent - Gemini 2.0 Flash)
 
 1. **Agent ADK** (`agent.py`):
    - Agente principal usando `google.adk.Agent`
-   - Modelo: `gemini-2.0-flash-exp` (configurable)
+   - Modelo: `gemini-2.5-pro` (para síntesis y resolución - ADR-004)
    - Tools: `classify_intent`, `persist_message`
    - Output key: `nexus_response`
 
@@ -177,7 +177,7 @@ Ver `.env.example` en la raíz del proyecto. Variables clave:
 # Google ADK / Gemini
 GOOGLE_CLOUD_PROJECT=your-project
 GEMINI_PROJECT_ID=your-project
-GEMINI_DEFAULT_MODEL=gemini-2.0-flash-exp
+# NEXUS siempre usa gemini-2.5-pro (hardcoded en agent.py)
 
 # Supabase
 SUPABASE_URL=https://your-project.supabase.co
@@ -207,11 +207,11 @@ from .sub_agents.nutrition import nutrition_agent
 
 nexus_agent = Agent(
     name="nexus",
-    model=MODEL,
+    model="gemini-2.5-pro",  # NEXUS usa Pro (ADR-004)
     instruction=NEXUS_INSTRUCTION,
     sub_agents=[
-        fitness_agent,
-        nutrition_agent,
+        fitness_agent,        # usa gemini-2.5-flash
+        nutrition_agent,      # usa gemini-2.5-flash
     ],
     # ...
 )
@@ -226,11 +226,11 @@ from google.adk.tools import AgentTool
 
 nexus_agent = Agent(
     name="nexus",
-    model=MODEL,
+    model="gemini-2.5-pro",  # NEXUS usa Pro (ADR-004)
     instruction=NEXUS_INSTRUCTION,
     tools=[
-        AgentTool(agent=fitness_agent),
-        AgentTool(agent=nutrition_agent),
+        AgentTool(agent=fitness_agent),    # Flash para respuestas rápidas
+        AgentTool(agent=nutrition_agent),  # Flash para conversación
     ],
 )
 ```

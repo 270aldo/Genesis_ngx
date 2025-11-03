@@ -49,7 +49,7 @@ AGENT_CARD: Dict[str, Any] = {
     "framework": {
         "name": "Google ADK",
         "version": "0.2.0",
-        "model": settings.gemini.default_model,
+        "model": "gemini-2.5-pro",  # NEXUS usa Pro para síntesis (ADR-004)
     },
 }
 

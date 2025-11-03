@@ -22,8 +22,8 @@ from .prompt import INTENT_CLASSIFICATION_PROMPT, NEXUS_INSTRUCTION
 settings = get_settings()
 logger = get_logger(__name__)
 
-# Modelo para NEXUS (orquestador usa Pro para mejor razonamiento)
-MODEL = settings.gemini.default_model or "gemini-2.0-flash-exp"
+# Modelo para NEXUS (orquestador usa Pro para síntesis y resolución de conflictos - ADR-004)
+MODEL = "gemini-2.5-pro"
 
 
 # =============================================================================
