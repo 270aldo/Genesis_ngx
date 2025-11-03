@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # Redis - Para caché y rate limiting
+  # ==========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: genesis-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - genesis-network
+
+  # ==========================================================================
+  # NEXUS Orchestrator
+  # ==========================================================================
+  nexus:
+    build:
+      context: .
+      dockerfile: agents/nexus/Dockerfile
+    container_name: genesis-nexus
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env.local
+    environment:
+      - NEXUS_HOST=0.0.0.0
+      - NEXUS_PORT=8080
+      - NEXUS_RELOAD=true
+      - REDIS_URL=redis://redis:6379/0
+      - LOG_LEVEL=DEBUG
+      - LOG_FORMAT=console
+      - ENVIRONMENT=development
+    volumes:
+      - ./agents:/app/agents:ro
+      - ./docs:/app/docs:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - genesis-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ==========================================================================
+  # Agent Fitness (placeholder para futuro desarrollo)
+  # ==========================================================================
+  # fitness:
+  #   build:
+  #     context: .
+  #     dockerfile: agents/fitness/Dockerfile
+  #   container_name: genesis-fitness
+  #   ports:
+  #     - "8081:8081"
+  #   env_file:
+  #     - .env.local
+  #   environment:
+  #     - AGENT_PORT=8081
+  #     - REDIS_URL=redis://redis:6379/0
+  #   depends_on:
+  #     - redis
+  #   networks:
+  #     - genesis-network
+
+  # ==========================================================================
+  # Agent Nutrition (placeholder para futuro desarrollo)
+  # ==========================================================================
+  # nutrition:
+  #   build:
+  #     context: .
+  #     dockerfile: agents/nutrition/Dockerfile
+  #   container_name: genesis-nutrition
+  #   ports:
+  #     - "8082:8082"
+  #   env_file:
+  #     - .env.local
+  #   environment:
+  #     - AGENT_PORT=8082
+  #     - REDIS_URL=redis://redis:6379/0
+  #   depends_on:
+  #     - redis
+  #   networks:
+  #     - genesis-network
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  genesis-network:
+    driver: bridge

@@ -28,7 +28,40 @@ Thumbs.db
 .terraform/
 terraform.tfstate*
 
-# Secrets
+# Secrets & Environment Variables
 *.env
 *.env.*
+!.env.example
+.env.local
+.env.development
+.env.staging
+.env.production
 supabase/service_role.key
+service-account*.json
+*-credentials.json
+
+# Google Cloud
+gcloud-config/
+.gcloud/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.coverage
+htmlcov/
+.tox/
+coverage.xml
+*.cover
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker
+docker-compose.override.yml
