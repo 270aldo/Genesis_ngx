@@ -1,5 +1,9 @@
 """Cliente para Google Gemini 2.5 con soporte para caching y cost control.
 
+NOTA: Este cliente es OPCIONAL si usas Google ADK.
+      - NEXUS usa ADK directamente (google.adk.Agent maneja Gemini internamente)
+      - Útil solo para servicios que NO usan ADK framework
+
 Características:
 - Soporte para Pro, Flash y Flash-Lite
 - Caching automático de system prompts
