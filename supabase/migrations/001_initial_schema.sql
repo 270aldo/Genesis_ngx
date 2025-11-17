@@ -84,21 +84,26 @@ alter table public.health_metrics enable row level security;
 alter table public.user_context_embeddings enable row level security;
 
 -- Profiles policies
-create policy if not exists "Users select own profile" on public.profiles
+drop policy if exists "Users select own profile" on public.profiles;
+create policy "Users select own profile" on public.profiles
   for select using (auth.uid() = id);
 
-create policy if not exists "Users update own profile" on public.profiles
+drop policy if exists "Users update own profile" on public.profiles;
+create policy "Users update own profile" on public.profiles
   for update using (auth.uid() = id) with check (auth.uid() = id);
 
 -- Conversations policies
-create policy if not exists "Users select conversations" on public.conversations
+drop policy if exists "Users select conversations" on public.conversations;
+create policy "Users select conversations" on public.conversations
   for select using (auth.uid() = user_id);
 
-create policy if not exists "Users insert conversations" on public.conversations
+drop policy if exists "Users insert conversations" on public.conversations;
+create policy "Users insert conversations" on public.conversations
   for insert with check (auth.uid() = user_id);
 
 -- Messages policies
-create policy if not exists "Users read messages" on public.messages
+drop policy if exists "Users read messages" on public.messages;
+create policy "Users read messages" on public.messages
   for select using (
     conversation_id in (
       select id from public.conversations where user_id = auth.uid()
@@ -106,31 +111,39 @@ create policy if not exists "Users read messages" on public.messages
   );
 
 -- Bloqueamos inserciones directas; se realizan vía RPCs
-create policy if not exists "Users insert messages" on public.messages
+drop policy if exists "Users insert messages" on public.messages;
+create policy "Users insert messages" on public.messages
   for insert with check (false);
 
-create policy if not exists "Agents insert messages" on public.messages
+drop policy if exists "Agents insert messages" on public.messages;
+create policy "Agents insert messages" on public.messages
   for insert with check (false);
 
 -- Agent events (solo agentes)
-create policy if not exists "Agents insert events" on public.agent_events
+drop policy if exists "Agents insert events" on public.agent_events;
+create policy "Agents insert events" on public.agent_events
   for insert with check ((auth.jwt() ->> 'app_metadata')::jsonb ->> 'agent_role' is not null);
 
-create policy if not exists "Users view own events" on public.agent_events
+drop policy if exists "Users view own events" on public.agent_events;
+create policy "Users view own events" on public.agent_events
   for select using (user_id = auth.uid());
 
 -- Health metrics
-create policy if not exists "Users read health metrics" on public.health_metrics
+drop policy if exists "Users read health metrics" on public.health_metrics;
+create policy "Users read health metrics" on public.health_metrics
   for select using (user_id = auth.uid());
 
-create policy if not exists "Users insert health metrics" on public.health_metrics
+drop policy if exists "Users insert health metrics" on public.health_metrics;
+create policy "Users insert health metrics" on public.health_metrics
   for insert with check (user_id = auth.uid());
 
 -- Embeddings
-create policy if not exists "Users read embeddings" on public.user_context_embeddings
+drop policy if exists "Users read embeddings" on public.user_context_embeddings;
+create policy "Users read embeddings" on public.user_context_embeddings
   for select using (user_id = auth.uid());
 
-create policy if not exists "Users insert embeddings" on public.user_context_embeddings
+drop policy if exists "Users insert embeddings" on public.user_context_embeddings;
+create policy "Users insert embeddings" on public.user_context_embeddings
   for insert with check (user_id = auth.uid());
 
 -- RPCs -----------------------------------------------------------------
