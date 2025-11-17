@@ -383,6 +383,49 @@ agent = NexusAgent()
 app = agent.app
 
 
+# Endpoint de prueba de integración con Supabase
+@app.get("/test-db")
+async def test_database():
+    """
+    Prueba conexión a Supabase usando el cliente compartido.
+
+    Returns:
+        Dict con status, connection info, y tables accessible
+    """
+    try:
+        # Usar el cliente Supabase del agente
+        supabase = agent.supabase
+
+        # Verificar conexión listando conversaciones existentes
+        conversations = supabase.client.table('conversations').select('id').limit(1).execute()
+
+        # Verificar que podemos leer mensajes
+        messages = supabase.client.table('messages').select('id').limit(1).execute()
+
+        return {
+            "status": "success",
+            "message": "NEXUS ↔ Supabase integration working!",
+            "database_connection": "OK",
+            "tables_accessible": {
+                "conversations": len(conversations.data) if conversations.data else 0,
+                "messages": len(messages.data) if messages.data else 0
+            },
+            "note": "Connection validated successfully via shared Supabase client.",
+            "next_steps": [
+                "Create user via Supabase Auth Dashboard",
+                "Use real user_id to test agent_append_message RPC",
+                "Test Gemini orchestration with real requests"
+            ]
+        }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "detail": str(e),
+            "type": type(e).__name__
+        }
+
+
 if __name__ == "__main__":  # pragma: no cover
     import uvicorn
 
