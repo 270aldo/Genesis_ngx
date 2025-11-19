@@ -1,10 +1,23 @@
 # ADK Visual Builder → Genesis A2A Translation Guide
 
-## Propósito
+> **NOTA IMPORTANTE (2025-11-19):** Después de investigación exhaustiva, **Genesis NGX NO usará Visual Builder** para desarrollo de agentes. Este documento se mantiene como referencia histórica y para casos de uso simples futuros.
+>
+> **Decisión:** Implementación directa en código Python con A2AServer para control total sobre A2A v0.3 protocol, budget enforcement, cost tracking, security validation, y features enterprise-grade.
+>
+> Ver: `ADR/006-no-visual-builder.md` para detalles de la decisión.
 
-Este directorio (`adk_designs/`) contiene diseños visuales de agentes creados con **ADK Visual Builder** (`adk web`).
+---
 
-**IMPORTANTE**: Los YAML exportados NO se deployean directamente. Se traducen manualmente a clases `A2AServer` para mantener compatibilidad con el protocolo A2A v0.3.
+## Propósito Original
+
+Este directorio (`adk_designs/`) fue creado para contener diseños visuales de agentes con **ADK Visual Builder** (`adk web`).
+
+**LIMITACIÓN IDENTIFICADA**: Los YAML exportados NO soportan features críticas de Genesis NGX:
+- Budget enforcement (`X-Budget-USD`)
+- Cost tracking en Supabase
+- Security validation (PHI/PII detection)
+- RLS integration (RPCs)
+- A2A v0.3 protocol completo (`/negotiate`, streaming SSE)
 
 ---
 
@@ -237,10 +250,32 @@ python -c "import yaml; yaml.safe_load(open('adk_designs/fitness_agent/root_agen
 
 ## Recursos
 
+- **NUEVO: Análisis Completo del Workflow Híbrido**: `docs/ADK_VISUAL_BUILDER_ANALYSIS.md`
+- **NUEVO: Referencia Rápida**: `docs/ADK_WORKFLOW_QUICK_REFERENCE.md`
 - **ADK Documentation**: https://cloud.google.com/agent-development-kit/docs
 - **A2A v0.3 Protocol**: Ver `ADR/002-a2a-v03-protocol.md`
 - **Genesis A2AServer**: Ver `agents/shared/a2a_server.py`
 - **Gemini Models**: Ver `agents/shared/cost_calculator.py`
+
+### Documentación Adicional (Noviembre 2025)
+
+**Para análisis profundo del workflow híbrido, consultar:**
+1. `docs/ADK_VISUAL_BUILDER_ANALYSIS.md` - Análisis completo con:
+   - Investigación de mejores prácticas de Google ADK
+   - Ventajas y limitaciones del Visual Builder
+   - Workflow híbrido efectivo paso a paso
+   - Casos de uso reales y lessons learned
+   - Comparación ADK vs LangChain vs AutoGen
+   - Integración con A2A protocol
+   - Roadmap de implementación
+   - Troubleshooting y FAQs
+
+2. `docs/ADK_WORKFLOW_QUICK_REFERENCE.md` - Referencia rápida con:
+   - Comandos esenciales
+   - Decision matrix (cuándo usar Visual Builder)
+   - Checklist de traducción
+   - Estimaciones de tiempo
+   - Pitfalls comunes
 
 ---
 
