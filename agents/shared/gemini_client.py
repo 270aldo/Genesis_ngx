@@ -96,6 +96,11 @@ class GeminiClient:
 
     def __post_init__(self) -> None:
         """Inicializa Vertex AI."""
+        # Verificar si estamos en modo mock
+        if get_settings().mock_gemini:
+            self._initialized = True
+            return
+
         if not self._initialized:
             vertexai.init(
                 project=self.config.project_id,
@@ -123,6 +128,10 @@ class GeminiClient:
         system_instruction: Optional[str] = None,
     ) -> GenerativeModel:
         """Crea instancia del modelo con configuración."""
+        # En modo mock, no necesitamos el modelo real
+        if get_settings().mock_gemini:
+            return None  # type: ignore
+
         return GenerativeModel(
             model_name=model_name,
             system_instruction=system_instruction,
@@ -196,6 +205,19 @@ class GeminiClient:
             GeminiError: Otros errores
         """
         start_time = time.time()
+
+        # Mock Response
+        if get_settings().mock_gemini:
+            metrics = GenerationMetrics(
+                model=model.value,
+                prompt_tokens=10,
+                cached_tokens=0,
+                output_tokens=20,
+                total_tokens=30,
+                cost_usd=0.0001,
+                latency_ms=100.0,
+            )
+            return f"[MOCK] Respuesta a: {prompt[:50]}...", metrics
 
         # Estimar costo
         estimated_tokens = len(prompt.split()) * 2  # Aproximación burda
@@ -301,6 +323,14 @@ class GeminiClient:
         Yields:
             Chunks de texto a medida que se generan
         """
+        # Mock Stream
+        if get_settings().mock_gemini:
+            chunks = ["[MOCK] ", "Stream ", "Respuesta ", "a: ", prompt[:20] + "..."]
+            for chunk in chunks:
+                yield chunk
+                await asyncio.sleep(0.1)
+            return
+
         # Crear modelo
         model_instance = self._get_model_instance(
             model_name=model.value,
