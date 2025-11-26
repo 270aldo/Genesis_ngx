@@ -24,9 +24,14 @@ dist/
 .DS_Store
 Thumbs.db
 
-# Terraform / IaC (futuros)
+# Terraform / IaC
 .terraform/
 terraform.tfstate*
+terraform.tfvars
+!terraform.tfvars.example
+
+# Supabase temp
+supabase/.temp/
 
 # Secrets & Environment Variables
 *.env
