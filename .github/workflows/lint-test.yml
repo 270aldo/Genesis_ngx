@@ -21,15 +21,22 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: 'pip' # Enable pip caching
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r agents/nexus/requirements.txt
-          pip install ruff==0.7.0
+          pip install -r requirements.txt
 
       - name: Lint
         run: ruff check agents
+
+      - name: Test with Coverage
+        run: |
+          # Create missing package marker if not exists (CI might clone fresh)
+          touch agents/__init__.py
+          # Run tests with coverage
+          pytest agents/shared/tests/ -v --cov=agents --cov-report=term-missing
 
       - name: Validate A2A schema
         run: |
@@ -42,6 +49,3 @@ jobs:
 
           jsonschema.Draft7Validator.check_schema(schema)
           PY
-
-      - name: Supabase migration dry-run
-        run: echo "TODO: integrar supabase db push --dry-run"

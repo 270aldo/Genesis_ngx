@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from agents.shared.a2a_server import A2AServer
 
 
-class TestAgent(A2AServer):
+class MockAgent(A2AServer):
     """Agente de prueba."""
 
     def __init__(self):
@@ -44,7 +44,7 @@ class TestAgent(A2AServer):
 @pytest.fixture
 def client():
     """Fixture para TestClient."""
-    agent = TestAgent()
+    agent = MockAgent()
     return TestClient(agent.app)
 
 
@@ -168,6 +168,6 @@ class TestA2AServer:
 
         # Leer eventos SSE
         lines = response.text.strip().split("\n")
-        events = [line.replace("data: ", "") for line in lines if line.startswith("data: ")]
+        events = [line.replace("data: ", "").strip() for line in lines if line.startswith("data: ")]
         assert len(events) == 3
         assert events == ["0", "1", "2"]
