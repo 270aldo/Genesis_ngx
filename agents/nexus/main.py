@@ -324,16 +324,83 @@ Proporciona respuestas útiles, empáticas y basadas en evidencia.""",
                 "metrics": metrics.to_dict(),
             }
 
-        # 3. Para otros agentes, hacer handoff (por ahora mock)
-        # TODO: Implementar A2A client para invocar agentes especializados
-        logger.info("handoff_to_agent", target_agent=agent_type)
+        # 3. Para otros agentes, invocar via A2A
+        try:
+            target_url = self._get_agent_url(agent_type)
+            if not target_url:
+                raise ValueError(f"No URL configured for agent: {agent_type}")
 
-        return {
-            "agent": agent_type,
-            "response": f"Handoff a agente {agent_type} (TODO: implementar A2A invocation)",
-            "intent": intent,
-            "handoff": True,
-        }
+            logger.info("invoking_agent", agent=agent_type, url=target_url)
+            
+            # Instanciar cliente A2A
+            client = A2AClient(
+                agent_url=target_url,
+                agent_id="nexus-orchestrator",  # NEXUS se identifica
+                timeout_seconds=settings.a2a.timeout_seconds,
+            )
+
+            # Invocar método (mapeo simple por ahora)
+            # En el futuro, el método a invocar dependerá del intent más fino
+            method_map = {
+                "fitness": "workout_planning", # Default a planning
+                "nutrition": "meal_planning",
+                "mental": "mood_check",
+            }
+            target_method = method_map.get(agent_type, "default_method")
+
+            # Preparar payload
+            payload = {
+                "user_message": user_message,
+                "conversation_id": conversation_id,
+                "user_id": user_id,
+                # Pasar contexto adicional si es necesario
+            }
+            
+            # Negociar primero (opcional, pero buena práctica A2A)
+            negotiation = await client.negotiate(
+                capabilities=[target_method],
+                budget_usd=0.02, # Budget fijo por ahora
+            )
+            
+            if not negotiation.get("accepted"):
+                 logger.warning("negotiation_failed", agent=agent_type, response=negotiation)
+                 return {
+                     "agent": "nexus",
+                     "response": f"Lo siento, el agente de {agent_type} no está disponible o no aceptó la solicitud.",
+                     "error": "negotiation_failed"
+                 }
+
+            # Invocar
+            result = await client.invoke(
+                method=target_method,
+                params=payload,
+                budget_usd=0.02,
+            )
+
+            return {
+                "agent": agent_type,
+                "response": result, # El resultado crudo del agente
+                "intent": intent,
+                "handoff": True,
+            }
+
+        except Exception as exc:
+            logger.error("agent_invocation_failed", agent=agent_type, error=str(exc))
+            return {
+                "agent": "nexus",
+                "response": f"Hubo un error contactando al especialista en {agent_type}. Por favor intenta más tarde.",
+                "error": str(exc)
+            }
+
+    def _get_agent_url(self, agent_type: str) -> Optional[str]:
+        """Obtiene la URL del agente basado en su tipo."""
+        if agent_type == "fitness":
+            return settings.agent_urls.fitness_url
+        if agent_type == "nutrition":
+            return settings.agent_urls.nutrition_url
+        if agent_type == "mental":
+            return settings.agent_urls.mental_health_url
+        return None
 
     async def _plan_stream(
         self,
