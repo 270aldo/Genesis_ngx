@@ -1,7 +1,11 @@
 # ADR-001: Cloud Run sobre Agent Engine para el MVP
 
-Status: Accepted
+> **SUPERSEDED**: This ADR has been superseded by [ADR-007](./ADR-007-agent-engine-migration.md).
+> The project is now migrating to Vertex AI Agent Engine with Google ADK.
+
+Status: Superseded
 Date: 2025-10-28
+Superseded by: ADR-007 (2025-11-27)
 
 ## Contexto
 - Necesitamos desplegar NEXUS y agentes especializados con el ADK y protocolo A2A.
