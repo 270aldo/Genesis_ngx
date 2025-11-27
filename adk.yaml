@@ -92,23 +92,84 @@ agents:
       max_instances: 5
 
   # ---------------------------------------------------------------------------
+  # ATLAS - Movilidad y Flexibilidad
+  # ---------------------------------------------------------------------------
+  atlas:
+    path: "agents/atlas"
+    entry_point: "agent:atlas"
+    model: "gemini-2.5-flash"
+    description: "Especialista en movilidad, flexibilidad y movimiento funcional"
+    config:
+      max_input_tokens: 20000
+      max_output_tokens: 2000
+      max_latency_ms: 2000
+      max_cost_per_invoke: 0.01
+    resources:
+      cpu: "1"
+      memory: "2Gi"
+      min_instances: 0
+      max_instances: 5
+
+  # ---------------------------------------------------------------------------
+  # TEMPO - Cardio y Resistencia
+  # ---------------------------------------------------------------------------
+  tempo:
+    path: "agents/tempo"
+    entry_point: "agent:tempo"
+    model: "gemini-2.5-flash"
+    description: "Especialista en entrenamiento cardiovascular y resistencia"
+    config:
+      max_input_tokens: 20000
+      max_output_tokens: 2000
+      max_latency_ms: 2000
+      max_cost_per_invoke: 0.01
+    resources:
+      cpu: "1"
+      memory: "2Gi"
+      min_instances: 0
+      max_instances: 5
+
+  # ---------------------------------------------------------------------------
+  # WAVE - Recuperación y Descanso
+  # ---------------------------------------------------------------------------
+  wave:
+    path: "agents/wave"
+    entry_point: "agent:wave"
+    model: "gemini-2.5-flash"
+    description: "Especialista en recuperación, descanso y regeneración"
+    config:
+      max_input_tokens: 20000
+      max_output_tokens: 2000
+      max_latency_ms: 2000
+      max_cost_per_invoke: 0.01
+    resources:
+      cpu: "1"
+      memory: "2Gi"
+      min_instances: 0
+      max_instances: 5
+
+  # ---------------------------------------------------------------------------
+  # STELLA - Analytics y Reportes
+  # ---------------------------------------------------------------------------
+  stella:
+    path: "agents/stella"
+    entry_point: "agent:stella"
+    model: "gemini-2.5-flash"
+    description: "Especialista en analytics, visualización de datos y reportes"
+    config:
+      max_input_tokens: 20000
+      max_output_tokens: 2000
+      max_latency_ms: 2000
+      max_cost_per_invoke: 0.01
+    resources:
+      cpu: "1"
+      memory: "2Gi"
+      min_instances: 0
+      max_instances: 5
+
+  # ---------------------------------------------------------------------------
   # Agentes Futuros (placeholders)
   # ---------------------------------------------------------------------------
-  # atlas:
-  #   path: "agents/atlas"
-  #   model: "gemini-2.5-flash"
-  #   description: "Especialista en movilidad y flexibilidad"
-
-  # tempo:
-  #   path: "agents/tempo"
-  #   model: "gemini-2.5-flash"
-  #   description: "Especialista en cardio y resistencia"
-
-  # wave:
-  #   path: "agents/wave"
-  #   model: "gemini-2.5-flash"
-  #   description: "Especialista en recuperación"
-
   # metabol:
   #   path: "agents/metabol"
   #   model: "gemini-2.5-flash"
@@ -128,11 +189,6 @@ agents:
   #   path: "agents/spark"
   #   model: "gemini-2.5-flash"
   #   description: "Especialista en conducta y hábitos"
-
-  # stella:
-  #   path: "agents/stella"
-  #   model: "gemini-2.5-flash"
-  #   description: "Especialista en análisis de datos"
 
   # luna:
   #   path: "agents/luna"
