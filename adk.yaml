@@ -263,12 +263,23 @@ agents:
       max_instances: 5
 
   # ---------------------------------------------------------------------------
-  # Agentes Futuros (placeholders)
+  # LOGOS - Educación (Pro Model)
   # ---------------------------------------------------------------------------
-  # logos:
-  #   path: "agents/logos"
-  #   model: "gemini-2.5-pro"
-  #   description: "Especialista en educación"
+  logos:
+    path: "agents/logos"
+    entry_point: "agent:logos"
+    model: "gemini-2.5-pro"  # ONLY specialist using Pro for complex reasoning
+    description: "Especialista en educación: conceptos, evidencia científica, mitos y contenido adaptativo"
+    config:
+      max_input_tokens: 50000
+      max_output_tokens: 4000
+      max_latency_ms: 6000
+      max_cost_per_invoke: 0.05
+    resources:
+      cpu: "2"
+      memory: "4Gi"
+      min_instances: 0
+      max_instances: 5
 
 # =============================================================================
 # Environment Configuration
