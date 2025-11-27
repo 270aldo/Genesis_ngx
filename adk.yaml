@@ -206,23 +206,65 @@ agents:
       max_instances: 5
 
   # ---------------------------------------------------------------------------
+  # SPARK - Conducta y Hábitos
+  # ---------------------------------------------------------------------------
+  spark:
+    path: "agents/spark"
+    entry_point: "agent:spark"
+    model: "gemini-2.5-flash"
+    description: "Especialista en conducta, hábitos y adherencia a programas"
+    config:
+      max_input_tokens: 20000
+      max_output_tokens: 2000
+      max_latency_ms: 2000
+      max_cost_per_invoke: 0.01
+    resources:
+      cpu: "1"
+      memory: "2Gi"
+      min_instances: 0
+      max_instances: 5
+
+  # ---------------------------------------------------------------------------
+  # NOVA - Suplementación
+  # ---------------------------------------------------------------------------
+  nova:
+    path: "agents/nova"
+    entry_point: "agent:nova"
+    model: "gemini-2.5-flash"
+    description: "Especialista en suplementación basada en evidencia"
+    config:
+      max_input_tokens: 20000
+      max_output_tokens: 2000
+      max_latency_ms: 2000
+      max_cost_per_invoke: 0.01
+    resources:
+      cpu: "1"
+      memory: "2Gi"
+      min_instances: 0
+      max_instances: 5
+
+  # ---------------------------------------------------------------------------
+  # LUNA - Salud Femenina
+  # ---------------------------------------------------------------------------
+  luna:
+    path: "agents/luna"
+    entry_point: "agent:luna"
+    model: "gemini-2.5-flash"
+    description: "Especialista en salud femenina, ciclo menstrual y adaptación hormonal"
+    config:
+      max_input_tokens: 20000
+      max_output_tokens: 2000
+      max_latency_ms: 2000
+      max_cost_per_invoke: 0.01
+    resources:
+      cpu: "1"
+      memory: "2Gi"
+      min_instances: 0
+      max_instances: 5
+
+  # ---------------------------------------------------------------------------
   # Agentes Futuros (placeholders)
   # ---------------------------------------------------------------------------
-  # nova:
-  #   path: "agents/nova"
-  #   model: "gemini-2.5-flash"
-  #   description: "Especialista en suplementación"
-
-  # spark:
-  #   path: "agents/spark"
-  #   model: "gemini-2.5-flash"
-  #   description: "Especialista en conducta y hábitos"
-
-  # luna:
-  #   path: "agents/luna"
-  #   model: "gemini-2.5-flash"
-  #   description: "Especialista en salud femenina"
-
   # logos:
   #   path: "agents/logos"
   #   model: "gemini-2.5-pro"
