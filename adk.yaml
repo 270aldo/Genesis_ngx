@@ -168,18 +168,46 @@ agents:
       max_instances: 5
 
   # ---------------------------------------------------------------------------
+  # METABOL - Metabolismo y TDEE
+  # ---------------------------------------------------------------------------
+  metabol:
+    path: "agents/metabol"
+    entry_point: "agent:metabol"
+    model: "gemini-2.5-flash"
+    description: "Especialista en metabolismo, TDEE, timing nutricional y adaptación metabólica"
+    config:
+      max_input_tokens: 20000
+      max_output_tokens: 2000
+      max_latency_ms: 2000
+      max_cost_per_invoke: 0.01
+    resources:
+      cpu: "1"
+      memory: "2Gi"
+      min_instances: 0
+      max_instances: 5
+
+  # ---------------------------------------------------------------------------
+  # MACRO - Macronutrientes
+  # ---------------------------------------------------------------------------
+  macro:
+    path: "agents/macro"
+    entry_point: "agent:macro"
+    model: "gemini-2.5-flash"
+    description: "Especialista en macronutrientes, distribución de proteína y ciclado de carbohidratos"
+    config:
+      max_input_tokens: 20000
+      max_output_tokens: 2000
+      max_latency_ms: 2000
+      max_cost_per_invoke: 0.01
+    resources:
+      cpu: "1"
+      memory: "2Gi"
+      min_instances: 0
+      max_instances: 5
+
+  # ---------------------------------------------------------------------------
   # Agentes Futuros (placeholders)
   # ---------------------------------------------------------------------------
-  # metabol:
-  #   path: "agents/metabol"
-  #   model: "gemini-2.5-flash"
-  #   description: "Especialista en metabolismo"
-
-  # macro:
-  #   path: "agents/macro"
-  #   model: "gemini-2.5-flash"
-  #   description: "Especialista en macronutrientes"
-
   # nova:
   #   path: "agents/nova"
   #   model: "gemini-2.5-flash"
