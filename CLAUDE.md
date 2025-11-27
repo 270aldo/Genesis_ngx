@@ -4,10 +4,35 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Genesis NGX is a multi-agent wellness system using Google's ADK (Agent Development Kit), Gemini 2.5 models, and Supabase as the single source of truth. The system features:
+Genesis NGX is a multi-agent wellness system using Google's ADK (Agent Development Kit), Gemini 2.5 models, and Supabase as the single source of truth.
 
-- **GENESIS_X**: Main orchestrator agent (Gemini 2.5 Pro) that routes requests to specialized agents
-- **Specialized Agents**: BLAZE (strength), SAGE (nutrition), ATLAS (mobility), TEMPO (cardio), WAVE (recovery), and more
+**Project Status: v1.0.0 - All 13 agents implemented (1045+ tests, 89% coverage)**
+
+### System Architecture
+
+```
+                    ┌─────────────────────────────────┐
+                    │          GENESIS_X              │
+                    │       (Orchestrator - Pro)      │
+                    └───────────────┬─────────────────┘
+                                    │
+        ┌───────────────────────────┼───────────────────────────┐
+        │                           │                           │
+┌───────▼───────┐          ┌────────▼────────┐         ┌───────▼───────┐
+│    FITNESS    │          │   NUTRITION     │         │    OTHER      │
+│               │          │                 │         │               │
+│ BLAZE: Fuerza │          │ SAGE: Strategy  │         │ SPARK: Habits │
+│ ATLAS: Movil. │          │ METABOL: TDEE   │         │ STELLA: Data  │
+│ TEMPO: Cardio │          │ MACRO: Macros   │         │ LUNA: Women   │
+│ WAVE: Recov.  │          │ NOVA: Supps     │         │ LOGOS: Educ.  │
+└───────────────┘          └─────────────────┘         └───────────────┘
+```
+
+### Key Components
+
+- **GENESIS_X**: Main orchestrator (Gemini 2.5 Pro) - routes requests to specialists
+- **LOGOS**: Education specialist (Gemini 2.5 Pro) - explains concepts, debunks myths
+- **11 Flash Specialists**: Domain-specific agents using Gemini 2.5 Flash
 - **Framework**: Google ADK (Agent Development Kit) with native agent definitions
 - **Protocol**: A2A (Agent-to-Agent) v0.3 using JSON-RPC 2.0 over HTTPS with SSE streaming
 - **Data**: Supabase PostgreSQL with pgvector for embeddings and RLS for security
@@ -110,16 +135,50 @@ agents/{agent_name}/
     └── test_tools.py
 ```
 
-### Current Agents
+### All Agents (v1.0.0)
 
-| Agent | Domain | Model | Status |
-|-------|--------|-------|--------|
-| GENESIS_X | Orchestration | gemini-2.5-pro | Implemented |
-| BLAZE | Strength/Hypertrophy | gemini-2.5-flash | Implemented |
-| SAGE | Nutrition Strategy | gemini-2.5-flash | Implemented |
-| ATLAS | Mobility/Flexibility | gemini-2.5-flash | Planned |
-| TEMPO | Cardio/Endurance | gemini-2.5-flash | Planned |
-| WAVE | Recovery | gemini-2.5-flash | Planned |
+| Agent | Domain | Model | Tests | Tools |
+|-------|--------|-------|-------|-------|
+| **GENESIS_X** | Orchestration | gemini-2.5-pro | 39 | classify_intent, invoke_specialist |
+| **BLAZE** | Strength/Hypertrophy | gemini-2.5-flash | 58 | generate_workout, calculate_1rm, suggest_progression |
+| **ATLAS** | Mobility/Flexibility | gemini-2.5-flash | 58 | assess_mobility, generate_routine, suggest_for_workout |
+| **TEMPO** | Cardio/Endurance | gemini-2.5-flash | 72 | calculate_zones, generate_session, analyze_performance |
+| **WAVE** | Recovery | gemini-2.5-flash | 65 | assess_recovery, generate_protocol, analyze_sleep |
+| **SAGE** | Nutrition Strategy | gemini-2.5-flash | 54 | analyze_diet, generate_plan, suggest_adjustments |
+| **METABOL** | Metabolism/TDEE | gemini-2.5-flash | 86 | calculate_tdee, analyze_adaptation, suggest_adjustments |
+| **MACRO** | Macronutrients | gemini-2.5-flash | 131 | calculate_macros, optimize_protein, cycle_carbs |
+| **NOVA** | Supplementation | gemini-2.5-flash | 115 | evaluate_supplement, create_stack, check_interactions |
+| **SPARK** | Behavior/Habits | gemini-2.5-flash | 132 | assess_readiness, design_habit, analyze_barriers |
+| **STELLA** | Analytics | gemini-2.5-flash | 95 | generate_report, analyze_trends, create_dashboard |
+| **LUNA** | Women's Health | gemini-2.5-flash | 120 | track_cycle, adapt_training, analyze_patterns |
+| **LOGOS** | Education | gemini-2.5-pro | 140 | explain_concept, present_evidence, debunk_myth, create_deep_dive, generate_quiz |
+
+### Model Tiers
+
+| Tier | Model | Agents | Latency | Cost/Invoke |
+|------|-------|--------|---------|-------------|
+| **Pro** | gemini-2.5-pro | GENESIS_X, LOGOS | ≤6000ms | ≤$0.05 |
+| **Flash** | gemini-2.5-flash | 11 specialists | ≤2000ms | ≤$0.01 |
+
+### LOGOS - Special Case (Pro Model)
+
+LOGOS is the **only specialist using Pro model** due to:
+- Complex reasoning for educational content
+- Adaptive explanations (3 user levels)
+- Evidence evaluation and myth debunking
+- Deep-dive and quiz generation
+
+```python
+# LOGOS configuration
+logos = Agent(
+    name="logos",
+    model="gemini-2.5-pro",  # Pro for complex reasoning
+    tools=[explain_concept, present_evidence, debunk_myth, create_deep_dive, generate_quiz],
+    output_key="logos_response",
+)
+```
+
+MVP databases: 20 concepts, 15 myths, 10 evidences across 5 domains
 
 ### Database Security Pattern
 
@@ -239,13 +298,54 @@ Before making architectural changes, consult existing ADRs in `ADR/`:
 
 ## Testing Strategy
 
+**Current Status: 1045+ tests, 89% coverage**
+
 Target: ≥80% coverage for agent code.
 
 Test locations: `agents/<agent_name>/tests/`
 
+```bash
+# Run all tests
+pytest agents/ -v
+
+# Run specific agent tests
+pytest agents/logos/tests/ -v
+pytest agents/genesis_x/tests/ -v
+
+# With coverage report
+pytest --cov=agents --cov-report=html
+```
+
 Key test types:
 - **Unit tests**: Test individual tools and functions
-- **Agent tests**: Test agent configuration and AGENT_CARD
+- **Agent tests**: Test agent configuration, AGENT_CARD, and AGENT_CONFIG
+- **Database tests**: Test data integrity and coverage across domains
 - **Integration tests**: Test Supabase connectivity and cross-agent communication
 
 Use `pytest` with asyncio support for testing async code.
+
+## Quick Reference
+
+### Running the System
+
+```bash
+# Local development with ADK playground
+adk web
+
+# Run specific agent
+adk run logos
+adk run genesis_x
+
+# Deploy to staging/production
+adk deploy --env staging
+adk deploy --env production
+```
+
+### Adding New Content to LOGOS
+
+To add concepts, myths, or evidence to LOGOS databases:
+
+1. Edit `agents/logos/tools.py`
+2. Add to appropriate database (CONCEPTS_DATABASE, MYTHS_DATABASE, EVIDENCE_DATABASE)
+3. Run tests: `pytest agents/logos/tests/ -v`
+4. Ensure cross-domain coverage is maintained
