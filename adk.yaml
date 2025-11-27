@@ -1,0 +1,227 @@
+# =============================================================================
+# GENESIS NGX - ADK Configuration
+# =============================================================================
+# Configuración para deployment con Google ADK (Agent Development Kit)
+#
+# Uso:
+#   adk web                    # Inicia playground local
+#   adk deploy --env staging   # Deploy a staging
+#   adk deploy --env production # Deploy a producción
+#   adk logs genesis_x --follow # Ver logs en tiempo real
+#
+# Documentación: https://google.github.io/adk-docs/
+# =============================================================================
+
+version: "1.0"
+
+# =============================================================================
+# Project Configuration
+# =============================================================================
+project:
+  name: "genesis-ngx"
+  description: "Sistema multi-agente de Performance & Longevity"
+  version: "1.0.0"
+
+# =============================================================================
+# Default Settings
+# =============================================================================
+defaults:
+  region: "us-central1"
+  model: "gemini-2.5-flash"
+  python_version: "3.12"
+
+# =============================================================================
+# Agent Definitions
+# =============================================================================
+agents:
+  # ---------------------------------------------------------------------------
+  # GENESIS_X - Orquestador Principal
+  # ---------------------------------------------------------------------------
+  genesis_x:
+    path: "agents/genesis_x"
+    entry_point: "agent:genesis_x"
+    model: "gemini-2.5-pro"
+    description: "Orquestador principal que coordina agentes especializados"
+    config:
+      max_input_tokens: 50000
+      max_output_tokens: 4000
+      max_latency_ms: 6000
+      max_cost_per_invoke: 0.05
+    resources:
+      cpu: "2"
+      memory: "4Gi"
+      min_instances: 1
+      max_instances: 10
+
+  # ---------------------------------------------------------------------------
+  # BLAZE - Fuerza e Hipertrofia
+  # ---------------------------------------------------------------------------
+  blaze:
+    path: "agents/blaze"
+    entry_point: "agent:blaze"
+    model: "gemini-2.5-flash"
+    description: "Especialista en entrenamiento de fuerza e hipertrofia"
+    config:
+      max_input_tokens: 20000
+      max_output_tokens: 2000
+      max_latency_ms: 2000
+      max_cost_per_invoke: 0.01
+    resources:
+      cpu: "1"
+      memory: "2Gi"
+      min_instances: 0
+      max_instances: 5
+
+  # ---------------------------------------------------------------------------
+  # SAGE - Estrategia Nutricional
+  # ---------------------------------------------------------------------------
+  sage:
+    path: "agents/sage"
+    entry_point: "agent:sage"
+    model: "gemini-2.5-flash"
+    description: "Estratega nutricional para planes de alimentación"
+    config:
+      max_input_tokens: 20000
+      max_output_tokens: 2000
+      max_latency_ms: 2000
+      max_cost_per_invoke: 0.01
+    resources:
+      cpu: "1"
+      memory: "2Gi"
+      min_instances: 0
+      max_instances: 5
+
+  # ---------------------------------------------------------------------------
+  # Agentes Futuros (placeholders)
+  # ---------------------------------------------------------------------------
+  # atlas:
+  #   path: "agents/atlas"
+  #   model: "gemini-2.5-flash"
+  #   description: "Especialista en movilidad y flexibilidad"
+
+  # tempo:
+  #   path: "agents/tempo"
+  #   model: "gemini-2.5-flash"
+  #   description: "Especialista en cardio y resistencia"
+
+  # wave:
+  #   path: "agents/wave"
+  #   model: "gemini-2.5-flash"
+  #   description: "Especialista en recuperación"
+
+  # metabol:
+  #   path: "agents/metabol"
+  #   model: "gemini-2.5-flash"
+  #   description: "Especialista en metabolismo"
+
+  # macro:
+  #   path: "agents/macro"
+  #   model: "gemini-2.5-flash"
+  #   description: "Especialista en macronutrientes"
+
+  # nova:
+  #   path: "agents/nova"
+  #   model: "gemini-2.5-flash"
+  #   description: "Especialista en suplementación"
+
+  # spark:
+  #   path: "agents/spark"
+  #   model: "gemini-2.5-flash"
+  #   description: "Especialista en conducta y hábitos"
+
+  # stella:
+  #   path: "agents/stella"
+  #   model: "gemini-2.5-flash"
+  #   description: "Especialista en análisis de datos"
+
+  # luna:
+  #   path: "agents/luna"
+  #   model: "gemini-2.5-flash"
+  #   description: "Especialista en salud femenina"
+
+  # logos:
+  #   path: "agents/logos"
+  #   model: "gemini-2.5-pro"
+  #   description: "Especialista en educación"
+
+# =============================================================================
+# Environment Configuration
+# =============================================================================
+environments:
+  # ---------------------------------------------------------------------------
+  # Development (local)
+  # ---------------------------------------------------------------------------
+  development:
+    project_id: "${GOOGLE_CLOUD_PROJECT:-ngx-genesis-dev}"
+    region: "us-central1"
+    log_level: "DEBUG"
+    secrets:
+      supabase_url: "SUPABASE_URL"
+      supabase_anon_key: "SUPABASE_ANON_KEY"
+      supabase_service_role_key: "SUPABASE_SERVICE_ROLE_KEY"
+
+  # ---------------------------------------------------------------------------
+  # Staging
+  # ---------------------------------------------------------------------------
+  staging:
+    project_id: "ngx-genesis-staging"
+    region: "us-central1"
+    log_level: "INFO"
+    secrets:
+      supabase_url: "projects/ngx-genesis-staging/secrets/supabase-url/versions/latest"
+      supabase_anon_key: "projects/ngx-genesis-staging/secrets/supabase-anon-key/versions/latest"
+      supabase_service_role_key: "projects/ngx-genesis-staging/secrets/supabase-service-role-key/versions/latest"
+
+  # ---------------------------------------------------------------------------
+  # Production
+  # ---------------------------------------------------------------------------
+  production:
+    project_id: "ngx-genesis-prod"
+    region: "us-central1"
+    log_level: "WARNING"
+    secrets:
+      supabase_url: "projects/ngx-genesis-prod/secrets/supabase-url/versions/latest"
+      supabase_anon_key: "projects/ngx-genesis-prod/secrets/supabase-anon-key/versions/latest"
+      supabase_service_role_key: "projects/ngx-genesis-prod/secrets/supabase-service-role-key/versions/latest"
+
+# =============================================================================
+# Observability
+# =============================================================================
+observability:
+  tracing:
+    enabled: true
+    sample_rate: 0.1  # 10% de requests en producción
+  logging:
+    structured: true
+    include_request_body: false
+    include_response_body: false
+  metrics:
+    enabled: true
+    export_interval_seconds: 60
+
+# =============================================================================
+# Security
+# =============================================================================
+security:
+  authentication:
+    method: "oidc"
+    audience: "genesis-ngx"
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 60
+    burst: 10
+  input_validation:
+    max_input_length: 50000
+    sanitize_html: true
+    check_prompt_injection: true
+
+# =============================================================================
+# A2A Protocol Configuration
+# =============================================================================
+a2a:
+  version: "0.3"
+  timeout_seconds: 30
+  max_retries: 3
+  retry_backoff_seconds: 2.0
+  budget_enforcement: true
+  default_budget_usd: 0.01

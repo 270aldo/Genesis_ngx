@@ -6,10 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Genesis NGX is a multi-agent wellness system using Google's ADK (Agent Development Kit), Gemini 2.5 models, and Supabase as the single source of truth. The system features:
 
-- **NEXUS**: Main orchestrator agent that routes requests to specialized agents
-- **Specialized Agents**: Fitness, Nutrition, Mental Health, Recovery, Longevity (to be implemented)
+- **GENESIS_X**: Main orchestrator agent (Gemini 2.5 Pro) that routes requests to specialized agents
+- **Specialized Agents**: BLAZE (strength), SAGE (nutrition), ATLAS (mobility), TEMPO (cardio), WAVE (recovery), and more
+- **Framework**: Google ADK (Agent Development Kit) with native agent definitions
 - **Protocol**: A2A (Agent-to-Agent) v0.3 using JSON-RPC 2.0 over HTTPS with SSE streaming
-- **Runtime**: Cloud Run (Python 3.12 + FastAPI) in us-central1
 - **Data**: Supabase PostgreSQL with pgvector for embeddings and RLS for security
 
 ## Development Environment Setup
@@ -19,11 +19,32 @@ Genesis NGX is a multi-agent wellness system using Google's ADK (Agent Developme
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Install dependencies (currently only NEXUS has requirements.txt)
-pip install -r agents/nexus/requirements.txt
+# Install dependencies
+pip install -r requirements.txt
 
-# Run NEXUS orchestrator locally
-uvicorn "agents.nexus.main:app" --host 0.0.0.0 --port 8080 --reload
+# Install ADK CLI
+pip install google-adk
+
+# Authenticate with GCP
+gcloud auth application-default login
+
+# Run agents in ADK playground
+adk web
+```
+
+## Running Tests
+
+```bash
+# Run all agent tests
+pytest agents/ -v
+
+# Run specific agent tests
+pytest agents/genesis_x/tests/ -v
+pytest agents/blaze/tests/ -v
+pytest agents/sage/tests/ -v
+
+# With coverage
+pytest --cov=agents --cov-report=html
 ```
 
 ## Database Operations
@@ -43,36 +64,62 @@ supabase db lint
 
 ```bash
 # Linting Python code
-ruff check agents
+ruff check agents/
 
-# Format Python code (when ruff is configured)
-ruff format agents
+# Format Python code
+ruff format agents/
 
-# Alternative linting
-flake8 agents
+# Fix linting issues
+ruff check --fix agents/
 ```
 
 ## Architecture Key Points
 
-### A2A Protocol Implementation
+### ADK Agent Pattern
 
-All agents inherit from `A2AServer` (in `agents/shared/a2a_server.py`) and must:
+All agents follow the Google ADK pattern:
 
-1. Define an `AGENT_CARD` dictionary conforming to `docs/a2a-agent-card.schema.json` with:
-   - `capabilities`: list of what the agent can do
-   - `limits`: `max_input_tokens`, `max_output_tokens`, `max_latency_ms`, `max_cost_per_invoke`
-   - `privacy`: `pii`, `phi`, `data_retention_days`
-   - `auth`: authentication method and audience
+```python
+from google.adk import Agent
+from google.adk.tools import FunctionTool
 
-2. Implement two core methods:
-   - `async def handle_method(self, method: str, params: Dict[str, Any]) -> Dict[str, Any]` for synchronous requests
-   - `async def handle_stream(self, method: str, params: Dict[str, Any]) -> AsyncGenerator[str, None]` for streaming responses
+agent = Agent(
+    name="agent_name",
+    model="gemini-2.5-flash",
+    description="Agent description",
+    instruction=SYSTEM_PROMPT,
+    tools=[tool1, tool2],
+    output_key="agent_response",
+)
 
-3. Expose standard A2A endpoints automatically:
-   - `GET /card` - Returns agent metadata
-   - `POST /negotiate` - Capability negotiation
-   - `POST /invoke` - Synchronous JSON-RPC call
-   - `POST /invoke/stream` - SSE streaming call
+# Entry point for ADK
+root_agent = agent
+```
+
+### Agent Directory Structure
+
+```
+agents/{agent_name}/
+├── __init__.py      # Exports: agent, AGENT_CARD, AGENT_CONFIG
+├── agent.py         # ADK Agent definition + AGENT_CARD + helper functions
+├── prompts.py       # System prompts
+├── tools.py         # FunctionTools + domain data/logic
+└── tests/
+    ├── __init__.py
+    ├── test_agent.py
+    └── test_tools.py
+```
+
+### Current Agents
+
+| Agent | Domain | Model | Status |
+|-------|--------|-------|--------|
+| GENESIS_X | Orchestration | gemini-2.5-pro | Implemented |
+| BLAZE | Strength/Hypertrophy | gemini-2.5-flash | Implemented |
+| SAGE | Nutrition Strategy | gemini-2.5-flash | Implemented |
+| ATLAS | Mobility/Flexibility | gemini-2.5-flash | Planned |
+| TEMPO | Cardio/Endurance | gemini-2.5-flash | Planned |
+| WAVE | Recovery | gemini-2.5-flash | Planned |
 
 ### Database Security Pattern
 
@@ -81,190 +128,124 @@ The database uses **Row Level Security (RLS)** with a specific pattern:
 - **Direct writes to tables are BLOCKED** via RLS policies (`WITH CHECK (false)`)
 - **All agent writes** must go through RPCs in the `rpc` schema (e.g., `rpc.agent_append_message`)
 - **RPCs are SECURITY DEFINER** functions that validate `agent_role` from JWT claims
-- **Agents are "machine users"** in Supabase Auth with `app_metadata.agent_role` set to their role (e.g., `nexus`, `agent_fitness`)
 
-Example flow:
+Example:
 ```python
 # Agents call RPCs to write data
-result = await supabase.rpc('agent_append_message', {
+result = supabase.rpc('agent_append_message', {
     'p_conversation_id': conv_id,
-    'p_agent_type': 'nexus',
+    'p_agent_type': 'genesis_x',
     'p_content': 'response text',
     'p_tokens_used': 150,
     'p_cost_usd': 0.0045
-})
+}).execute()
 ```
-
-The RPC internally:
-1. Validates the caller has an `agent_role` claim
-2. Verifies ownership/authorization
-3. Writes to the table (bypassing RLS because it's SECURITY DEFINER)
-4. Logs to `agent_events` for audit trail
 
 ### Cost Tracking
 
-The `CostCalculator` class in `agents/shared/cost_calculator.py` provides real pricing formulas (October 2025):
+The `CostCalculator` class in `agents/shared/cost_calculator.py` provides Gemini pricing:
 
-- **Cloud Run**: $0.0864/vCPU-hour, $0.009/GiB-hour
 - **Gemini 2.5 Pro**: $1.25/M input tokens, $10/M output (≤200K context)
 - **Gemini 2.5 Flash**: $0.30/M input, $2.50/M output
-- **Gemini 2.5 Flash-Lite**: $0.10/M input, $0.40/M output
-- **Context caching discount**: 90% off cached tokens (use `input_cached` rates)
+- **Context caching discount**: 90% off cached tokens
 
-Agents should check budget before expensive operations:
-```python
-from agents.shared.cost_calculator import CostCalculator
-
-calc = CostCalculator()
-estimated_cost = calc.calculate_gemini_cost(
-    model='flash',
-    input_tokens=500,
-    output_tokens=200,
-    cached_tokens=0  # Adjust based on cache hit
-)
-
-if estimated_cost > budget:
-    raise A2ABudgetExceededError("Insufficient budget")
-```
-
-### Agent Communication Pattern
-
-When NEXUS needs to invoke another agent:
-
-```python
-from agents.shared.a2a_client import A2AClient
-
-# Initialize client
-client = A2AClient(base_url="http://fitness-agent:8080")
-
-# Get agent capabilities
-card = await client.get_card()
-
-# Negotiate if needed
-negotiation = await client.negotiate(
-    capabilities=["workout_planning"],
-    budget_usd=0.01
-)
-
-# Invoke method
-result = await client.invoke(
-    method="create_workout_plan",
-    params={"user_id": "...", "goal": "strength"},
-    request_id="unique-id",
-    budget_usd=0.01
-)
-
-# Or stream responses
-async for chunk in client.invoke_stream(method="stream_plan", params={...}):
-    print(chunk)
-```
-
-## Creating New Agents
-
-When implementing a new specialized agent (e.g., Fitness, Nutrition):
+### Creating New Agents
 
 1. **Create directory structure**:
    ```
-   agents/fitness/
+   agents/new_agent/
    ├── __init__.py
-   ├── main.py
-   ├── Dockerfile
-   ├── requirements.txt
-   └── README.md
+   ├── agent.py
+   ├── prompts.py
+   ├── tools.py
+   └── tests/
    ```
 
-2. **Define AGENT_CARD** following `docs/a2a-agent-card.schema.json`
-
-3. **Inherit from A2AServer**:
+2. **Define agent in agent.py**:
    ```python
-   from agents.shared.a2a_server import A2AServer
+   from google.adk import Agent
+   from .prompts import SYSTEM_PROMPT
+   from .tools import ALL_TOOLS
 
-   class FitnessAgent(A2AServer):
-       def __init__(self):
-           super().__init__(AGENT_CARD)
+   new_agent = Agent(
+       name="new_agent",
+       model="gemini-2.5-flash",
+       description="Agent description",
+       instruction=SYSTEM_PROMPT,
+       tools=ALL_TOOLS,
+       output_key="new_agent_response",
+   )
 
-       async def handle_method(self, method: str, params: dict):
-           if method == "create_workout":
-               # Implementation
-               return {"workout": {...}}
+   root_agent = new_agent
    ```
 
-4. **Use shared libraries**:
-   - `agents.shared.cost_calculator` for cost estimation
-   - `agents.shared.security` for input sanitization
-   - `agents.shared.a2a_client` to call other agents
+3. **Add to adk.yaml**:
+   ```yaml
+   agents:
+     new_agent:
+       path: "agents/new_agent"
+       entry_point: "agent:new_agent"
+       model: "gemini-2.5-flash"
+   ```
 
-5. **Document in ADR** if the agent introduces new patterns or responsibilities
+4. **Update GENESIS_X routing** in `agents/genesis_x/tools.py`
 
 ## Git Workflow
 
-- **Branch naming**: `feature/<ticket>-description`, `fix/<ticket>-bug`, `hotfix/<ticket>-critical`
+- **Branch naming**: `feat/<description>`, `fix/<description>`, `chore/<description>`
 - **Commits**: Use Conventional Commits format: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`
-- **Pull requests**: Must link to issue (`Closes #ID`), pass `lint-test` checks, get 1 approval
+- **Pull requests**: Must pass `lint-test` checks, get approval
 - **Merge strategy**: Squash & Merge for clean history
 
 ## Important Constraints
 
 ### Security
-- **Never bypass RLS**: Always use `rpc.agent_append_message` and similar RPCs to write data
-- **Sanitize inputs**: Use `agents.shared.security.SecurityValidator` to check for PHI/PII and prompt injection
-- **Scope is wellness**: This is NOT a medical device; reject any PHI (diagnoses, medications, prescriptions)
+- **Never bypass RLS**: Always use RPCs to write data
+- **Sanitize inputs**: Use `agents.shared.security.SecurityValidator` for PHI/PII and prompt injection
+- **Scope is wellness**: This is NOT a medical device; reject any PHI
 
-### Performance Targets (SLOs from ADR-001)
+### Performance Targets (SLOs)
 - **Latency p95**: ≤2.0s for Flash models, ≤6.0s for Pro
 - **Availability**: ≥99.5%
-- **Cost per invoke**: ≤$0.01 for Flash agents, ≤$0.05 for NEXUS (Pro)
+- **Cost per invoke**: ≤$0.01 for Flash agents, ≤$0.05 for GENESIS_X (Pro)
 
-### A2A Protocol Rules (from ADR-002)
+### A2A Protocol Rules
 - **Always propagate `X-Request-ID`** for distributed tracing
 - **Respect budgets**: Check `X-Budget-USD` header and reject if insufficient
-- **Implement retries**: 3 attempts with exponential backoff for transient errors
-- **Use standard error codes**: `-32000` (AGENT_UNAVAILABLE), `-32001` (BUDGET_EXCEEDED), `-32002` (TIMEOUT), etc.
-
-## Module Import Convention
-
-When running agents, use the fully qualified module path to ensure `agents.shared` imports work:
-
-```bash
-# Correct - full module path
-uvicorn "agents.nexus.main:app" --host 0.0.0.0 --port 8080
-
-# Incorrect - relative path causes import errors
-cd agents/nexus && uvicorn "main:app"
-```
+- **Use standard error codes**: `-32000` (AGENT_UNAVAILABLE), `-32001` (BUDGET_EXCEEDED), etc.
 
 ## Database Schema Reference
 
 Key tables:
 - `profiles`: User profiles (references `auth.users`)
 - `conversations`: Chat sessions with `user_id` and `status`
-- `messages`: Individual messages with `conversation_id`, `role` (user/agent/system), `agent_type`, `cost_usd`
+- `messages`: Individual messages with `conversation_id`, `role`, `agent_type`, `cost_usd`
 - `agent_events`: Audit log with `user_id`, `agent_type`, `event_type`, `payload`
 - `health_metrics`: User health data with `metric_type`, `value`, `unit`
-- `user_context_embeddings`: Vector embeddings (768-dim) with HNSW index for similarity search
+- `user_context_embeddings`: Vector embeddings (768-dim) with HNSW index
 
 All tables have RLS enabled. Users read their own data via `auth.uid()`. Agents write via RPCs.
 
 ## ADR Reference
 
 Before making architectural changes, consult existing ADRs in `ADR/`:
-- **001**: Why Cloud Run over Agent Engine (cost, flexibility, maturity)
+- **001**: Cloud Run architecture (SUPERSEDED by ADR-007)
 - **002**: A2A v0.3 protocol implementation (JSON-RPC + SSE)
-- **003**: Supabase-only architecture (no Firestore to avoid dual-write complexity)
+- **003**: Supabase-only architecture (no Firestore)
 - **004**: Gemini model selection strategy (Pro/Flash/Flash-Lite criteria)
 - **005**: Security and compliance (wellness scope, no PHI in MVP)
-
-Open a new ADR when introducing new technologies, patterns, or significant architectural decisions.
+- **006**: Decision not to use ADK Visual Builder
+- **007**: Migration to ADK/Agent Engine (CURRENT)
 
 ## Testing Strategy
 
-Target: ≥70% coverage for shared libraries.
+Target: ≥80% coverage for agent code.
 
-Test locations: `agents/<domain>/tests/`
+Test locations: `agents/<agent_name>/tests/`
 
 Key test types:
-- **Contractual tests**: Validate A2A JSON-RPC requests/responses against schema
-- **RLS tests**: Execute RPCs with different roles to verify security boundaries
-- **Integration tests**: End-to-end flows from client → NEXUS → specialized agent → database
+- **Unit tests**: Test individual tools and functions
+- **Agent tests**: Test agent configuration and AGENT_CARD
+- **Integration tests**: Test Supabase connectivity and cross-agent communication
 
 Use `pytest` with asyncio support for testing async code.

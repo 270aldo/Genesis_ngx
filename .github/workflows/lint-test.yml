@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: ["main", "develop"]
   push:
-    branches: ["develop"]
+    branches: ["main", "develop"]
 
 permissions:
   contents: read
@@ -21,7 +21,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: 'pip' # Enable pip caching
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
@@ -29,14 +29,25 @@ jobs:
           pip install -r requirements.txt
 
       - name: Lint
-        run: ruff check agents
+        run: ruff check agents/
 
       - name: Test with Coverage
         run: |
-          # Create missing package marker if not exists (CI might clone fresh)
+          # Ensure package markers exist
           touch agents/__init__.py
-          # Run tests with coverage
-          pytest agents/shared/tests/ -v --cov=agents --cov-report=term-missing
+          # Run all agent tests with coverage
+          pytest agents/ -v --cov=agents --cov-report=term-missing --cov-report=xml -x
+        env:
+          # Dummy values for CI (tests use mocks)
+          SUPABASE_URL: "https://test.supabase.co"
+          SUPABASE_ANON_KEY: "test-anon-key"
+          SUPABASE_SERVICE_ROLE_KEY: "test-service-key"
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
 
       - name: Validate A2A schema
         run: |
@@ -48,4 +59,5 @@ jobs:
               schema = json.load(f)
 
           jsonschema.Draft7Validator.check_schema(schema)
+          print("A2A schema is valid")
           PY

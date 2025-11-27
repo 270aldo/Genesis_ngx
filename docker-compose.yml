@@ -1,56 +1,34 @@
+# =============================================================================
+# Genesis NGX - Docker Compose (Development)
+# =============================================================================
+# NOTE: For ADK-based development, use `adk web` instead of docker-compose.
+# This file is kept for reference and potential future use.
+# =============================================================================
+
 services:
-  nexus:
-    build:
-      context: .
-      dockerfile: agents/nexus/Dockerfile
-    ports:
-      - "8080:8080"
-    env_file:
-      - .env
-    environment:
-      - PYTHONUNBUFFERED=1
-      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json
-    depends_on:
-      - fitness
-      - nutrition
-    volumes:
-      - ./agents/nexus:/app/agents/nexus
-      - ./agents/shared:/app/agents/shared
-      - ./docs:/app/docs
-      - ~/.config/gcloud/application_default_credentials.json:/app/credentials.json:ro
+  # Supabase local (optional - you can also use Supabase Cloud)
+  # supabase:
+  #   image: supabase/postgres:15.1.0.147
+  #   ports:
+  #     - "54322:5432"
+  #   environment:
+  #     POSTGRES_PASSWORD: postgres
+  #     POSTGRES_DB: postgres
+  #   volumes:
+  #     - supabase_data:/var/lib/postgresql/data
 
-  fitness:
-    build:
-      context: .
-      dockerfile: agents/fitness/Dockerfile
-    ports:
-      - "8081:8081"
-    env_file:
-      - .env
-    environment:
-      - PYTHONUNBUFFERED=1
-      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json
-    volumes:
-      - ./agents/fitness:/app/agents/fitness
-      - ./agents/shared:/app/agents/shared
-      - ~/.config/gcloud/application_default_credentials.json:/app/credentials.json:ro
-
-  nutrition:
-    build:
-      context: .
-      dockerfile: agents/nutrition/Dockerfile
-    ports:
-      - "8082:8082"
-    env_file:
-      - .env
-    environment:
-      - PYTHONUNBUFFERED=1
-      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json
-    volumes:
-      - ./agents/nutrition:/app/agents/nutrition
-      - ./agents/shared:/app/agents/shared
-      - ~/.config/gcloud/application_default_credentials.json:/app/credentials.json:ro
+  # ADK Development Note:
+  # =====================
+  # Agents are now defined using Google ADK and run with:
+  #   adk web          # Local playground
+  #   adk run agent    # Run specific agent
+  #   adk deploy       # Deploy to Agent Engine
+  #
+  # See adk.yaml for agent configuration.
 
 networks:
   default:
     name: genesis-network
+
+# volumes:
+#   supabase_data:

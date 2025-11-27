@@ -1,2 +1,0 @@
-# Instalar desde requirements.txt principal
--r ../../requirements.txt
