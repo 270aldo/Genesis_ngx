@@ -5,26 +5,32 @@ Sistema multi-agente de bienestar (wellness) construido con Google ADK (Agent De
 ## Arquitectura
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                    GENESIS_X                        │
-│              (Orchestrator - Pro)                   │
-│  - Intent Classification                            │
-│  - Agent Routing                                    │
-│  - Consensus Building                               │
-└──────────────┬────────────────┬─────────────────────┘
-               │                │
-       ┌───────▼───────┐ ┌──────▼───────┐
-       │    BLAZE      │ │     SAGE     │
-       │   (Flash)     │ │   (Flash)    │
-       │  Strength/    │ │  Nutrition   │
-       │  Hypertrophy  │ │  Strategy    │
-       └───────────────┘ └──────────────┘
-               │                │
-       ┌───────▼───────┐ ┌──────▼───────┐
-       │    ATLAS      │ │    TEMPO     │  (Planned)
-       │  Mobility     │ │   Cardio     │
-       └───────────────┘ └──────────────┘
+                    ┌─────────────────────────────────┐
+                    │          GENESIS_X              │
+                    │       (Orchestrator - Pro)      │
+                    │  Intent Classification          │
+                    │  Agent Routing & Consensus      │
+                    └───────────────┬─────────────────┘
+                                    │
+        ┌───────────────────────────┼───────────────────────────┐
+        │                           │                           │
+┌───────▼───────┐          ┌────────▼────────┐         ┌───────▼───────┐
+│    FITNESS    │          │   NUTRITION     │         │    OTHER      │
+│               │          │                 │         │               │
+│ BLAZE: Fuerza │          │ SAGE: Strategy  │         │ SPARK: Habits │
+│ ATLAS: Movil. │          │ METABOL: TDEE   │         │ STELLA: Data  │
+│ TEMPO: Cardio │          │ MACRO: Macros   │         │ LUNA: Women   │
+│ WAVE: Recov.  │          │ NOVA: Supps     │         │ LOGOS: Educ.  │
+└───────────────┘          └─────────────────┘         └───────────────┘
 ```
+
+### Modelos por Rol
+
+| Rol | Modelo | Agentes |
+|-----|--------|---------|
+| **Orquestador** | gemini-2.5-pro | GENESIS_X |
+| **Educación** | gemini-2.5-pro | LOGOS |
+| **Especialistas** | gemini-2.5-flash | 11 agentes |
 
 ## Características
 
@@ -33,21 +39,31 @@ Sistema multi-agente de bienestar (wellness) construido con Google ADK (Agent De
 - **Gemini 2.5**: Pro para orquestación, Flash para agentes especializados
 - **Supabase**: PostgreSQL + RLS como única fuente de verdad
 - **Protocolo A2A v0.3**: JSON-RPC + SSE para comunicación inter-agentes
-- **Testing**: Suite completa con pytest (148+ tests)
+- **Testing**: Suite completa con pytest (1045+ tests, 89% coverage)
 
 ## Estructura del Proyecto
 
 ```
 Genesis_ngx/
 ├── agents/
-│   ├── genesis_x/          # Orquestador principal (ADK)
+│   ├── genesis_x/          # Orquestador principal (Pro)
 │   │   ├── agent.py        # Definición del agente
 │   │   ├── tools.py        # FunctionTools
 │   │   ├── prompts.py      # System prompts
 │   │   └── tests/          # Tests unitarios e integración
 │   │
-│   ├── blaze/              # Agente de fuerza/hipertrofia
-│   ├── sage/               # Agente de nutrición
+│   ├── blaze/              # Fuerza e hipertrofia (Flash)
+│   ├── atlas/              # Movilidad y flexibilidad (Flash)
+│   ├── tempo/              # Cardio y resistencia (Flash)
+│   ├── wave/               # Recuperación (Flash)
+│   ├── sage/               # Estrategia nutricional (Flash)
+│   ├── metabol/            # Metabolismo y TDEE (Flash)
+│   ├── macro/              # Macronutrientes (Flash)
+│   ├── nova/               # Suplementación (Flash)
+│   ├── spark/              # Conducta y hábitos (Flash)
+│   ├── stella/             # Analytics y reportes (Flash)
+│   ├── luna/               # Salud femenina (Flash)
+│   ├── logos/              # Educación (Pro) ⭐
 │   │
 │   └── shared/             # Código compartido
 │       ├── supabase_client.py
@@ -119,14 +135,23 @@ pytest --cov=agents --cov-report=html
 
 ## Agentes Disponibles
 
-| Agent | Dominio | Modelo | Estado |
-|-------|---------|--------|--------|
-| GENESIS_X | Orquestación | gemini-2.5-pro | ✅ Implementado |
-| BLAZE | Fuerza/Hipertrofia | gemini-2.5-flash | ✅ Implementado |
-| SAGE | Nutrición | gemini-2.5-flash | ✅ Implementado |
-| ATLAS | Movilidad | gemini-2.5-flash | 🔜 Planificado |
-| TEMPO | Cardio | gemini-2.5-flash | 🔜 Planificado |
-| WAVE | Recuperación | gemini-2.5-flash | 🔜 Planificado |
+| Agent | Dominio | Modelo | Tests | Estado |
+|-------|---------|--------|-------|--------|
+| GENESIS_X | Orquestación | gemini-2.5-pro | 39 | ✅ Implementado |
+| BLAZE | Fuerza/Hipertrofia | gemini-2.5-flash | 58 | ✅ Implementado |
+| ATLAS | Movilidad | gemini-2.5-flash | 58 | ✅ Implementado |
+| TEMPO | Cardio | gemini-2.5-flash | 72 | ✅ Implementado |
+| WAVE | Recuperación | gemini-2.5-flash | 65 | ✅ Implementado |
+| SAGE | Estrategia Nutricional | gemini-2.5-flash | 54 | ✅ Implementado |
+| METABOL | Metabolismo/TDEE | gemini-2.5-flash | 86 | ✅ Implementado |
+| MACRO | Macronutrientes | gemini-2.5-flash | 131 | ✅ Implementado |
+| NOVA | Suplementación | gemini-2.5-flash | 115 | ✅ Implementado |
+| SPARK | Conducta/Hábitos | gemini-2.5-flash | 132 | ✅ Implementado |
+| STELLA | Analytics | gemini-2.5-flash | 95 | ✅ Implementado |
+| LUNA | Salud Femenina | gemini-2.5-flash | 120 | ✅ Implementado |
+| **LOGOS** | **Educación** | **gemini-2.5-pro** | **140** | ✅ Implementado |
+
+**Total: 13 agentes, 1045+ tests**
 
 ## Testing
 
