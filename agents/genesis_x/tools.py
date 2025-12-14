@@ -24,6 +24,7 @@ from agents.shared.agent_engine_registry import (
     get_registry,
 )
 from agents.shared.cost_calculator import CostCalculator
+from agents.shared.gemini_client import GeminiClient, GeminiModel, GeminiError
 from agents.shared.security import SecurityValidator
 from agents.shared.supabase_client import (
     SupabaseError,
@@ -630,16 +631,86 @@ def _build_agent_message(method: str, params: dict[str, Any]) -> str:
     )
 
 
-def build_consensus(
+# Prompt para consenso usando Gemini Pro
+CONSENSUS_SYSTEM_PROMPT = """Eres GENESIS_X, un orquestador de agentes especializados en wellness.
+Tu tarea es sintetizar las respuestas de múltiples especialistas en UNA respuesta coherente.
+
+## Reglas:
+1. Integra la información de todos los especialistas SIN contradecirlos
+2. Si hay conflictos, explica las diferentes perspectivas
+3. Prioriza recomendaciones según el contexto del usuario
+4. Usa un tono profesional pero cercano
+5. Responde en español (México)
+6. Máximo 300 palabras
+7. Incluye una pregunta de seguimiento relevante
+
+## Especialistas disponibles:
+- BLAZE: Fuerza e hipertrofia
+- ATLAS: Movilidad y flexibilidad
+- TEMPO: Cardio y resistencia
+- WAVE: Recuperación y sueño
+- SAGE: Estrategia nutricional
+- METABOL: Metabolismo y TDEE
+- MACRO: Macronutrientes
+- NOVA: Suplementación
+- SPARK: Hábitos y comportamiento
+- STELLA: Analytics y datos
+- LUNA: Salud femenina
+- LOGOS: Educación y ciencia"""
+
+
+def _build_consensus_prompt(
+    agent_responses: list[dict[str, Any]],
+    user_message: str,
+    user_context: Optional[dict[str, Any]] = None,
+) -> str:
+    """Construye el prompt para síntesis de consenso."""
+    responses_text = []
+    for resp in agent_responses:
+        agent_id = resp.get("agent_id", "unknown").upper()
+        result = resp.get("result", {})
+        response_content = result.get("response", str(result))
+        responses_text.append(f"### {agent_id}:\n{response_content}")
+
+    responses_section = "\n\n".join(responses_text)
+
+    context_section = ""
+    if user_context:
+        context_items = []
+        if user_context.get("active_season"):
+            context_items.append(f"- Temporada activa: {user_context['active_season']}")
+        if user_context.get("preferences"):
+            prefs = user_context["preferences"]
+            if prefs.get("training_level"):
+                context_items.append(f"- Nivel: {prefs['training_level']}")
+            if prefs.get("goals"):
+                context_items.append(f"- Objetivos: {prefs['goals']}")
+        if context_items:
+            context_section = "\n## Contexto del usuario:\n" + "\n".join(context_items)
+
+    return f"""## Pregunta del usuario:
+{user_message}
+{context_section}
+## Respuestas de especialistas:
+{responses_section}
+
+## Tu tarea:
+Sintetiza las respuestas anteriores en UNA respuesta coherente para el usuario.
+Formato de respuesta:
+RESPUESTA: [tu síntesis aquí]
+SEGUIMIENTO: [pregunta de seguimiento sugerida]
+CONFLICTOS: [lista de conflictos resueltos o "ninguno"]"""
+
+
+async def build_consensus(
     agent_responses: list[dict[str, Any]],
     user_message: str,
     user_context: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
-    """Construye una respuesta unificada a partir de múltiples agentes.
+    """Construye una respuesta unificada usando Gemini Pro.
 
-    Toma las respuestas de varios agentes especializados y las integra
-    en una respuesta coherente para el usuario, resolviendo posibles
-    conflictos y priorizando según el contexto.
+    Toma las respuestas de varios agentes especializados y usa Gemini Pro
+    para integrarlas en una respuesta coherente, resolviendo conflictos.
 
     Args:
         agent_responses: Lista de respuestas de agentes especializados
@@ -653,6 +724,8 @@ def build_consensus(
         - confidence: Confianza en la respuesta unificada
         - follow_up_suggested: Pregunta de seguimiento sugerida
         - conflicts_resolved: Lista de conflictos que se resolvieron
+        - tokens_used: Tokens usados para consenso
+        - cost_usd: Costo de la operación de consenso
     """
     if not agent_responses:
         return {
@@ -662,6 +735,8 @@ def build_consensus(
             "confidence": 0.3,
             "follow_up_suggested": "¿Qué aspecto específico te gustaría explorar?",
             "conflicts_resolved": [],
+            "tokens_used": 0,
+            "cost_usd": 0.0,
         }
 
     # Filtrar respuestas exitosas
@@ -670,7 +745,6 @@ def build_consensus(
     ]
 
     if not successful_responses:
-        # Todos los agentes fallaron
         return {
             "unified_response": "Estoy teniendo dificultades técnicas para "
             "procesar tu solicitud. Por favor intenta de nuevo.",
@@ -678,29 +752,117 @@ def build_consensus(
             "confidence": 0.2,
             "follow_up_suggested": None,
             "conflicts_resolved": [],
+            "tokens_used": 0,
+            "cost_usd": 0.0,
         }
 
-    # Extraer información de cada agente
     sources = [r["agent_id"] for r in successful_responses]
 
-    # En producción, aquí el LLM integraría las respuestas
-    # Por ahora, construimos una respuesta placeholder estructurada
-    agents_summary = ", ".join(sources)
-
-    unified_response = (
-        f"Basándome en la consulta de los especialistas ({agents_summary}), "
-        f"aquí está mi respuesta integrada a tu pregunta sobre: '{user_message[:50]}...'"
+    # Construir prompt para Gemini Pro
+    consensus_prompt = _build_consensus_prompt(
+        successful_responses,
+        user_message,
+        user_context,
     )
 
-    # Calcular confianza basada en número de fuentes y sus resultados
-    confidence = min(0.5 + (len(successful_responses) * 0.15), 0.95)
+    try:
+        # Usar Gemini Pro para sintetizar respuestas
+        client = GeminiClient()
+        response_text, metrics = await client.generate(
+            prompt=consensus_prompt,
+            model=GeminiModel.PRO,
+            system_instruction=CONSENSUS_SYSTEM_PROMPT,
+            max_output_tokens=1024,
+            temperature=0.7,
+            budget_usd=0.02,  # Budget para consenso
+        )
+
+        # Parsear respuesta estructurada
+        unified_response = response_text
+        follow_up = "¿Hay algo más específico que te gustaría saber?"
+        conflicts = []
+
+        # Intentar extraer secciones estructuradas
+        if "RESPUESTA:" in response_text:
+            parts = response_text.split("RESPUESTA:")
+            if len(parts) > 1:
+                rest = parts[1]
+                if "SEGUIMIENTO:" in rest:
+                    resp_parts = rest.split("SEGUIMIENTO:")
+                    unified_response = resp_parts[0].strip()
+                    follow_rest = resp_parts[1]
+                    if "CONFLICTOS:" in follow_rest:
+                        follow_parts = follow_rest.split("CONFLICTOS:")
+                        follow_up = follow_parts[0].strip()
+                        conflicts_text = follow_parts[1].strip().lower()
+                        if conflicts_text != "ninguno" and conflicts_text:
+                            conflicts = [c.strip() for c in conflicts_text.split(",")]
+                    else:
+                        follow_up = follow_rest.strip()
+                else:
+                    unified_response = rest.strip()
+
+        # Calcular confianza basada en múltiples factores
+        base_confidence = 0.5 + (len(successful_responses) * 0.1)
+        # Gemini Pro synthesis aumenta confianza
+        confidence = min(base_confidence + 0.15, 0.95)
+
+        return {
+            "unified_response": unified_response,
+            "sources": sources,
+            "confidence": round(confidence, 2),
+            "follow_up_suggested": follow_up,
+            "conflicts_resolved": conflicts,
+            "tokens_used": metrics.total_tokens,
+            "cost_usd": metrics.cost_usd,
+        }
+
+    except GeminiError as e:
+        logger.warning(f"Error en Gemini para consenso: {e}. Usando fallback.")
+        # Fallback a síntesis simple
+        return _build_fallback_consensus(successful_responses, user_message, sources)
+
+    except Exception as e:
+        logger.error(f"Error inesperado en build_consensus: {e}")
+        return _build_fallback_consensus(successful_responses, user_message, sources)
+
+
+def _build_fallback_consensus(
+    successful_responses: list[dict[str, Any]],
+    user_message: str,
+    sources: list[str],
+) -> dict[str, Any]:
+    """Fallback cuando Gemini Pro no está disponible."""
+    agents_summary = ", ".join(s.upper() for s in sources)
+
+    # Extraer puntos clave de cada respuesta
+    key_points = []
+    for resp in successful_responses:
+        result = resp.get("result", {})
+        response_text = result.get("response", "")
+        if response_text:
+            # Tomar primera oración o primeros 100 chars
+            first_sentence = response_text.split(".")[0][:100]
+            key_points.append(f"- {resp['agent_id'].upper()}: {first_sentence}")
+
+    points_text = "\n".join(key_points) if key_points else ""
+
+    unified_response = (
+        f"Consulté a los especialistas {agents_summary} sobre tu pregunta.\n\n"
+        f"Puntos clave:\n{points_text}\n\n"
+        f"Para una respuesta más integrada, por favor intenta de nuevo."
+    )
+
+    confidence = min(0.4 + (len(successful_responses) * 0.1), 0.7)
 
     return {
         "unified_response": unified_response,
         "sources": sources,
         "confidence": round(confidence, 2),
-        "follow_up_suggested": "¿Hay algo más específico que te gustaría saber?",
+        "follow_up_suggested": "¿Qué aspecto específico te gustaría explorar?",
         "conflicts_resolved": [],
+        "tokens_used": 0,
+        "cost_usd": 0.0,
     }
 
 

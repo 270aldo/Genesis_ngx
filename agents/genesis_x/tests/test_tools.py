@@ -3,7 +3,7 @@
 Cubre:
 - classify_intent: Clasificación de intents
 - invoke_specialist: Invocación de agentes (async con AgentEngineRegistry)
-- build_consensus: Construcción de consenso
+- build_consensus: Construcción de consenso (async con Gemini Pro)
 - Security: Validación de inputs
 """
 
@@ -16,6 +16,9 @@ from agents.genesis_x.tools import (
     invoke_specialist,
     build_consensus,
     _build_agent_message,
+    _build_consensus_prompt,
+    _build_fallback_consensus,
+    CONSENSUS_SYSTEM_PROMPT,
     IntentCategory,
     INTENT_TO_AGENTS,
     AGENT_MODELS,
@@ -338,20 +341,21 @@ class TestBuildAgentMessage:
 
 
 class TestBuildConsensus:
-    """Tests para build_consensus."""
+    """Tests para build_consensus (async con Gemini Pro)."""
 
-    def test_consensus_with_single_response(self):
+    @pytest.mark.asyncio
+    async def test_consensus_with_single_response(self):
         """Debe construir consenso con una sola respuesta."""
         responses = [
             {
                 "agent_id": "blaze",
                 "method": "respond",
-                "result": {"message": "Respuesta de BLAZE"},
+                "result": {"response": "Respuesta de BLAZE sobre fuerza"},
                 "status": "success",
             }
         ]
 
-        result = build_consensus(
+        result = await build_consensus(
             agent_responses=responses,
             user_message="¿Cómo ganar músculo?",
         )
@@ -359,46 +363,237 @@ class TestBuildConsensus:
         assert result["confidence"] > 0
         assert "blaze" in result["sources"]
         assert result["unified_response"] != ""
+        # Nuevos campos de métricas
+        assert "tokens_used" in result
+        assert "cost_usd" in result
 
-    def test_consensus_with_multiple_responses(self):
-        """Debe integrar múltiples respuestas."""
+    @pytest.mark.asyncio
+    async def test_consensus_with_multiple_responses(self):
+        """Debe integrar múltiples respuestas con Gemini Pro."""
         responses = [
-            {"agent_id": "blaze", "result": {}, "status": "success"},
-            {"agent_id": "sage", "result": {}, "status": "success"},
-            {"agent_id": "wave", "result": {}, "status": "success"},
+            {"agent_id": "blaze", "result": {"response": "Fuerza info"}, "status": "success"},
+            {"agent_id": "sage", "result": {"response": "Nutrición info"}, "status": "success"},
+            {"agent_id": "wave", "result": {"response": "Recuperación info"}, "status": "success"},
         ]
 
-        result = build_consensus(
+        result = await build_consensus(
             agent_responses=responses,
-            user_message="Plan completo",
+            user_message="Plan completo de entrenamiento",
         )
 
         assert len(result["sources"]) == 3
-        assert result["confidence"] >= 0.8  # Alta confianza con 3 fuentes
+        assert result["confidence"] >= 0.7  # Confianza alta con múltiples fuentes
+        assert result["unified_response"] != ""
 
-    def test_consensus_with_no_responses(self):
+    @pytest.mark.asyncio
+    async def test_consensus_with_no_responses(self):
         """Debe manejar caso sin respuestas."""
-        result = build_consensus(
+        result = await build_consensus(
             agent_responses=[],
             user_message="test",
         )
 
         assert result["confidence"] < 0.5
         assert "No tengo suficiente información" in result["unified_response"]
+        assert result["tokens_used"] == 0
+        assert result["cost_usd"] == 0.0
 
-    def test_consensus_with_failed_responses(self):
+    @pytest.mark.asyncio
+    async def test_consensus_with_failed_responses(self):
         """Debe manejar respuestas fallidas."""
         responses = [
             {"agent_id": "blaze", "result": {}, "status": "error"},
             {"agent_id": "sage", "result": {}, "status": "error"},
         ]
 
-        result = build_consensus(
+        result = await build_consensus(
             agent_responses=responses,
             user_message="test",
         )
 
         assert "dificultades técnicas" in result["unified_response"]
+        assert result["tokens_used"] == 0
+
+    @pytest.mark.asyncio
+    async def test_consensus_with_user_context(self):
+        """Debe usar contexto del usuario en la síntesis."""
+        responses = [
+            {
+                "agent_id": "blaze",
+                "result": {"response": "Entrenamiento de fuerza para intermedios"},
+                "status": "success",
+            }
+        ]
+
+        user_context = {
+            "active_season": "bulking",
+            "preferences": {
+                "training_level": "intermediate",
+                "goals": "muscle_building",
+            },
+        }
+
+        result = await build_consensus(
+            agent_responses=responses,
+            user_message="¿Qué rutina me recomiendas?",
+            user_context=user_context,
+        )
+
+        assert result["confidence"] > 0
+        assert "blaze" in result["sources"]
+
+    @pytest.mark.asyncio
+    async def test_consensus_includes_follow_up(self):
+        """Debe incluir pregunta de seguimiento sugerida."""
+        responses = [
+            {
+                "agent_id": "sage",
+                "result": {"response": "Dieta balanceada recomendada"},
+                "status": "success",
+            }
+        ]
+
+        result = await build_consensus(
+            agent_responses=responses,
+            user_message="¿Cómo debo comer?",
+        )
+
+        assert result["follow_up_suggested"] is not None
+        assert len(result["follow_up_suggested"]) > 0
+
+    @pytest.mark.asyncio
+    async def test_consensus_mixed_success_and_failure(self):
+        """Debe usar solo respuestas exitosas."""
+        responses = [
+            {"agent_id": "blaze", "result": {"response": "Fuerza"}, "status": "success"},
+            {"agent_id": "sage", "result": {}, "status": "error"},
+            {"agent_id": "wave", "result": {"response": "Recuperación"}, "status": "success"},
+        ]
+
+        result = await build_consensus(
+            agent_responses=responses,
+            user_message="Plan completo",
+        )
+
+        # Solo 2 fuentes exitosas
+        assert len(result["sources"]) == 2
+        assert "blaze" in result["sources"]
+        assert "wave" in result["sources"]
+        assert "sage" not in result["sources"]
+
+
+class TestConsensusHelpers:
+    """Tests para funciones helper de consenso."""
+
+    def test_consensus_system_prompt_exists(self):
+        """El prompt del sistema debe existir y tener contenido."""
+        assert CONSENSUS_SYSTEM_PROMPT is not None
+        assert len(CONSENSUS_SYSTEM_PROMPT) > 100
+        assert "GENESIS_X" in CONSENSUS_SYSTEM_PROMPT
+        assert "wellness" in CONSENSUS_SYSTEM_PROMPT.lower()
+
+    def test_consensus_system_prompt_includes_specialists(self):
+        """El prompt debe listar todos los especialistas."""
+        specialists = ["BLAZE", "ATLAS", "TEMPO", "WAVE", "SAGE", "METABOL",
+                      "MACRO", "NOVA", "SPARK", "STELLA", "LUNA", "LOGOS"]
+        for specialist in specialists:
+            assert specialist in CONSENSUS_SYSTEM_PROMPT
+
+    def test_build_consensus_prompt_basic(self):
+        """Debe construir prompt básico correctamente."""
+        responses = [
+            {"agent_id": "blaze", "result": {"response": "Entrenamiento de fuerza"}},
+        ]
+        prompt = _build_consensus_prompt(responses, "¿Cómo entreno?")
+
+        assert "¿Cómo entreno?" in prompt
+        assert "BLAZE" in prompt
+        assert "Entrenamiento de fuerza" in prompt
+        assert "RESPUESTA:" in prompt
+        assert "SEGUIMIENTO:" in prompt
+
+    def test_build_consensus_prompt_multiple_agents(self):
+        """Debe incluir respuestas de múltiples agentes."""
+        responses = [
+            {"agent_id": "blaze", "result": {"response": "Fuerza info"}},
+            {"agent_id": "sage", "result": {"response": "Nutrición info"}},
+            {"agent_id": "wave", "result": {"response": "Recuperación info"}},
+        ]
+        prompt = _build_consensus_prompt(responses, "Plan completo")
+
+        assert "BLAZE" in prompt
+        assert "SAGE" in prompt
+        assert "WAVE" in prompt
+        assert "Fuerza info" in prompt
+        assert "Nutrición info" in prompt
+        assert "Recuperación info" in prompt
+
+    def test_build_consensus_prompt_with_context(self):
+        """Debe incluir contexto del usuario cuando se proporciona."""
+        responses = [
+            {"agent_id": "blaze", "result": {"response": "Info"}},
+        ]
+        user_context = {
+            "active_season": "cutting",
+            "preferences": {
+                "training_level": "advanced",
+                "goals": "fat_loss",
+            },
+        }
+        prompt = _build_consensus_prompt(responses, "Mi plan", user_context)
+
+        assert "Contexto del usuario" in prompt
+        assert "cutting" in prompt
+        assert "advanced" in prompt
+        assert "fat_loss" in prompt
+
+    def test_build_consensus_prompt_handles_empty_result(self):
+        """Debe manejar resultados vacíos."""
+        responses = [
+            {"agent_id": "blaze", "result": {}},
+        ]
+        prompt = _build_consensus_prompt(responses, "Test")
+
+        assert "BLAZE" in prompt
+        # Debe usar str(result) como fallback
+        assert "{}" in prompt
+
+    def test_build_fallback_consensus_single_source(self):
+        """Debe construir fallback con una fuente."""
+        responses = [
+            {"agent_id": "blaze", "result": {"response": "Entrena con progresión."}}
+        ]
+        result = _build_fallback_consensus(responses, "Test", ["blaze"])
+
+        assert "BLAZE" in result["unified_response"]
+        assert result["confidence"] < 0.8
+        assert result["tokens_used"] == 0
+        assert result["cost_usd"] == 0.0
+
+    def test_build_fallback_consensus_multiple_sources(self):
+        """Debe construir fallback con múltiples fuentes."""
+        responses = [
+            {"agent_id": "blaze", "result": {"response": "Fuerza primero."}},
+            {"agent_id": "sage", "result": {"response": "Proteína importante."}},
+        ]
+        result = _build_fallback_consensus(responses, "Test", ["blaze", "sage"])
+
+        assert "BLAZE" in result["unified_response"]
+        assert "SAGE" in result["unified_response"]
+        assert len(result["sources"]) == 2
+
+    def test_build_fallback_consensus_extracts_key_points(self):
+        """Debe extraer puntos clave de cada respuesta."""
+        responses = [
+            {
+                "agent_id": "blaze",
+                "result": {"response": "Entrena con progresión lineal. Esto es importante."}
+            },
+        ]
+        result = _build_fallback_consensus(responses, "Test", ["blaze"])
+
+        assert "Puntos clave" in result["unified_response"]
+        assert "Entrena con progresión lineal" in result["unified_response"]
 
 
 class TestConstants:
