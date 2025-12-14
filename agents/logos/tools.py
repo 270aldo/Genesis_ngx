@@ -31,6 +31,8 @@ class Domain(str, Enum):
     BEHAVIOR = "behavior"
     RECOVERY = "recovery"
     WOMENS_HEALTH = "womens_health"
+    MOBILITY = "mobility"
+    ANALYTICS = "analytics"
 
 
 class LearningLevel(str, Enum):
@@ -448,6 +450,252 @@ CONCEPTS_DATABASE: dict[str, dict] = {
         ],
         "analogy": "Es como surfear: aprovechas las olas cuando vienen, no luchas contra el océano.",
     },
+    # -------------------------------------------------------------------------
+    # MOBILITY (4 conceptos - ATLAS domain)
+    # -------------------------------------------------------------------------
+    "joint_mobility": {
+        "domain": "mobility",
+        "name_es": "Movilidad Articular",
+        "definition": "Capacidad de mover una articulación a través de su rango completo de movimiento con control",
+        "why_important": "La movilidad limitada reduce rendimiento, aumenta riesgo de lesiones, y causa compensaciones que afectan toda la cadena cinética.",
+        "levels": {
+            "beginner": "Cada articulación tiene un rango de movimiento. Si no puedes moverla completamente, tu cuerpo compensa y algo puede dolerte.",
+            "intermediate": "La movilidad combina flexibilidad (longitud muscular) + control motor. No basta estirar, debes fortalecer en el rango completo.",
+            "advanced": "Prioriza 'movilidad activa' (CARs, PAILs/RAILs) sobre estiramiento pasivo. El sistema nervioso controla el rango accesible.",
+        },
+        "related_concepts": ["flexibility", "movement_quality", "injury_prevention"],
+        "common_mistakes": [
+            "Confundir flexibilidad con movilidad",
+            "Solo estirar sin fortalecer",
+            "Ignorar movilidad hasta que hay dolor",
+        ],
+        "analogy": "Es como el aceite en una bisagra: una puerta puede tener la capacidad de abrirse 180°, pero si está oxidada, solo abre 90°.",
+    },
+    "movement_quality": {
+        "domain": "mobility",
+        "name_es": "Calidad de Movimiento",
+        "definition": "Patrones de movimiento eficientes, controlados y sin compensaciones que distribuyen la carga apropiadamente",
+        "why_important": "Mover bien antes de mover más. La técnica deficiente se amplifica con la carga y causa lesiones.",
+        "levels": {
+            "beginner": "Antes de levantar más peso, asegúrate de hacer el movimiento correctamente. La forma importa más que los kilos.",
+            "intermediate": "Evalúa patrones básicos: sentadilla, bisagra de cadera, empuje, tirón, cargada. Corrige limitaciones antes de cargar.",
+            "advanced": "Usa FMS u otras evaluaciones. Los patrones disfuncionales bajo carga causan lesiones que la fuerza sola no previene.",
+        },
+        "related_concepts": ["joint_mobility", "core_stability", "technique"],
+        "common_mistakes": [
+            "Priorizar peso sobre técnica",
+            "No evaluar movimientos básicos",
+            "Agregar carga a patrones disfuncionales",
+        ],
+        "analogy": "Es como construir sobre cimientos: puedes hacer un edificio alto, pero si los cimientos son malos, eventualmente se cae.",
+    },
+    "flexibility_vs_mobility": {
+        "domain": "mobility",
+        "name_es": "Flexibilidad vs Movilidad",
+        "definition": "Flexibilidad es el rango pasivo (alguien te mueve). Movilidad es el rango activo (tú controlas el movimiento).",
+        "why_important": "Tener flexibilidad sin movilidad es tener rango que no puedes usar o controlar, lo cual puede ser peligroso.",
+        "levels": {
+            "beginner": "Si alguien te estira la pierna y llega más arriba de lo que tú puedes levantarla solo, hay una brecha que trabajar.",
+            "intermediate": "El 'rango pasivo' no usado se pierde. Entrena 'end ranges' activamente para mantener y expandir movilidad funcional.",
+            "advanced": "La movilidad activa requiere fuerza en el rango final. Isométricos en posiciones extremas construyen control real.",
+        },
+        "related_concepts": ["joint_mobility", "active_range", "stretching"],
+        "common_mistakes": [
+            "Solo hacer estiramientos pasivos",
+            "No fortalecer en rangos extremos",
+            "Creer que más flexible = mejor",
+        ],
+        "analogy": "Flexibilidad es poder alcanzar una repisa alta. Movilidad es poder sacar y guardar cosas de esa repisa de forma controlada.",
+    },
+    "breathing_mechanics": {
+        "domain": "mobility",
+        "name_es": "Mecánica Respiratoria",
+        "definition": "Patrones de respiración óptimos que afectan postura, estabilidad del core, y manejo del estrés",
+        "why_important": "La respiración conecta sistema nervioso, postura, y rendimiento. Respirar mal afecta todo lo demás.",
+        "levels": {
+            "beginner": "Respira con el diafragma, no solo con el pecho. Tu abdomen debe expandirse al inhalar.",
+            "intermediate": "La respiración 360° (expandir costillas en todas direcciones) crea presión intra-abdominal para estabilidad.",
+            "advanced": "Integra técnicas de respiración para diferentes contextos: Valsalva para levantamientos máximos, respiración rítmica para cardio.",
+        },
+        "related_concepts": ["core_stability", "stress_management", "performance"],
+        "common_mistakes": [
+            "Respiración superficial de pecho",
+            "Aguantar la respiración innecesariamente",
+            "Ignorar la respiración en el entrenamiento",
+        ],
+        "analogy": "El diafragma es como un pistón: cuando baja, crea espacio y presión. Esta presión es el cimiento de toda estabilidad.",
+    },
+    # -------------------------------------------------------------------------
+    # ANALYTICS (4 conceptos - STELLA domain)
+    # -------------------------------------------------------------------------
+    "training_metrics": {
+        "domain": "analytics",
+        "name_es": "Métricas de Entrenamiento",
+        "definition": "Datos cuantificables para medir progreso: volumen, intensidad, frecuencia, RPE, RIR, tiempo bajo tensión",
+        "why_important": "Lo que no se mide, no se mejora. Las métricas permiten tomar decisiones basadas en datos, no en sensaciones.",
+        "levels": {
+            "beginner": "Anota peso, repeticiones, y series de cada ejercicio. Esto es tu 'volumen'. Busca que aumente con el tiempo.",
+            "intermediate": "Usa RPE (esfuerzo percibido 1-10) o RIR (repeticiones en reserva) para cuantificar intensidad real vs números absolutos.",
+            "advanced": "Calcula volumen de carga (series × reps × peso), monitorea ratio volumen/intensidad, ajusta según progresión histórica.",
+        },
+        "related_concepts": ["progressive_overload", "periodization", "data_analysis"],
+        "common_mistakes": [
+            "No trackear nada",
+            "Trackear demasiadas cosas sin analizar",
+            "Ignorar tendencias por enfocarse en días individuales",
+        ],
+        "analogy": "Las métricas son como el tablero de tu auto: no necesitas mirarlo cada segundo, pero te avisa si algo va mal.",
+    },
+    "progress_assessment": {
+        "domain": "analytics",
+        "name_es": "Evaluación de Progreso",
+        "definition": "Análisis sistemático de si estás avanzando hacia tus metas usando múltiples indicadores",
+        "why_important": "El progreso no es lineal. Evaluarlo correctamente evita cambios innecesarios y frustraciones por expectativas irreales.",
+        "levels": {
+            "beginner": "El progreso real se mide en semanas y meses, no en días. Compara fotos/medidas cada 4 semanas.",
+            "intermediate": "Usa múltiples indicadores: fuerza, medidas, fotos, energía, recuperación. Uno malo no significa fracaso.",
+            "advanced": "Analiza tendencias, no puntos individuales. La regresión a la media significa que días buenos y malos se promedian.",
+        },
+        "related_concepts": ["training_metrics", "goal_setting", "realistic_expectations"],
+        "common_mistakes": [
+            "Pesarse diariamente y reaccionar a fluctuaciones",
+            "Cambiar programa porque una semana fue mala",
+            "Solo medir peso ignorando otros indicadores",
+        ],
+        "analogy": "Evaluar progreso es como ver el clima: un día frío no significa que el verano terminó. Mira la tendencia de semanas.",
+    },
+    "data_interpretation": {
+        "domain": "analytics",
+        "name_es": "Interpretación de Datos",
+        "definition": "Habilidad de extraer conclusiones útiles de tus métricas sin sobre-reaccionar a variaciones normales",
+        "why_important": "Los datos sin interpretación correcta pueden llevar a decisiones peores que no tener datos.",
+        "levels": {
+            "beginner": "Tu peso puede variar 1-2kg en un día por agua, comida, y hora. Es normal. Mira promedios semanales.",
+            "intermediate": "Distingue entre variación (ruido aleatorio) y tendencia (señal real). Necesitas 2-4 semanas para ver tendencias.",
+            "advanced": "Considera contexto: el rendimiento bajo después de mala noche no indica necesidad de cambiar programa.",
+        },
+        "related_concepts": ["progress_assessment", "training_metrics", "decision_making"],
+        "common_mistakes": [
+            "Reaccionar a cada fluctuación",
+            "Ignorar datos que no confirman lo que quieres creer",
+            "No considerar factores externos (sueño, estrés)",
+        ],
+        "analogy": "Los datos son como ingredientes: tenerlos no significa que sabes cocinar. La interpretación es la receta.",
+    },
+    "goal_setting": {
+        "domain": "analytics",
+        "name_es": "Establecimiento de Metas",
+        "definition": "Proceso de definir objetivos específicos, medibles, alcanzables, relevantes y con tiempo definido (SMART)",
+        "why_important": "Metas bien definidas aumentan adherencia, permiten medir progreso, y dan dirección clara al entrenamiento.",
+        "levels": {
+            "beginner": "En vez de 'quiero estar fit', define: 'Quiero hacer 10 dominadas en 6 meses'. Específico y medible.",
+            "intermediate": "Divide metas grandes en sub-metas mensuales. 'Perder 12kg en un año' = '1kg por mes' = mucho más manejable.",
+            "advanced": "Establece metas de proceso (acciones) además de resultados. Controlas ir al gym 4x/semana; no controlas el número en la báscula.",
+        },
+        "related_concepts": ["progress_assessment", "motivation", "planning"],
+        "common_mistakes": [
+            "Metas vagas ('estar mejor')",
+            "Metas irrealistas (perder 10kg en un mes)",
+            "Solo metas de resultado sin metas de proceso",
+        ],
+        "analogy": "Una meta sin plan es un deseo. Las metas SMART son como coordenadas GPS: te dicen exactamente dónde ir.",
+    },
+    # -------------------------------------------------------------------------
+    # NUTRITION EXPANSION (3 conceptos adicionales)
+    # -------------------------------------------------------------------------
+    "micronutrients": {
+        "domain": "nutrition",
+        "name_es": "Micronutrientes",
+        "definition": "Vitaminas y minerales esenciales que el cuerpo necesita en pequeñas cantidades para funciones vitales",
+        "why_important": "Deficiencias de micronutrientes afectan energía, recuperación, sistema inmune, y rendimiento sin que te des cuenta.",
+        "levels": {
+            "beginner": "Come variedad de frutas, verduras, y proteínas de calidad. Los colores diferentes = diferentes vitaminas.",
+            "intermediate": "Prioriza hierro (mujeres), vitamina D (poca exposición solar), omega-3 (poco pescado). El resto suele cubrirse con dieta variada.",
+            "advanced": "Considera testeo de niveles si sospechas deficiencia. La suplementación sin deficiencia rara vez aporta beneficio extra.",
+        },
+        "related_concepts": ["macronutrients", "whole_foods", "supplementation"],
+        "common_mistakes": [
+            "Tomar multivitamínicos sin necesidad",
+            "Ignorar micronutrientes por enfocarse solo en macros",
+            "Suplementar sin verificar deficiencia real",
+        ],
+        "analogy": "Los micronutrientes son como los tornillos de una máquina: pequeños pero si faltan, nada funciona bien.",
+    },
+    "hydration": {
+        "domain": "nutrition",
+        "name_es": "Hidratación",
+        "definition": "Mantenimiento del balance de agua y electrolitos necesario para funciones fisiológicas y rendimiento",
+        "why_important": "Una deshidratación del 2% puede reducir rendimiento físico y cognitivo significativamente.",
+        "levels": {
+            "beginner": "Toma agua cuando tengas sed y un poco más si entrenas. Tu orina debe ser amarillo claro, no oscura.",
+            "intermediate": "Apunta a ~35ml por kg de peso corporal como base. Añade 500-1000ml por hora de ejercicio intenso.",
+            "advanced": "En entrenamientos largos (>60min intensos), considera electrolitos. El sodio es el más importante para reposición.",
+        },
+        "related_concepts": ["performance", "electrolytes", "recovery"],
+        "common_mistakes": [
+            "Esperar a tener mucha sed para beber",
+            "Beber demasiada agua sin electrolitos (hiponatremia)",
+            "Ignorar hidratación en entrenamientos cortos",
+        ],
+        "analogy": "Tu cuerpo es como una planta: sin agua suficiente, todo se marchita, pero ahogarla tampoco ayuda.",
+    },
+    "whole_foods": {
+        "domain": "nutrition",
+        "name_es": "Alimentos Integrales",
+        "definition": "Alimentos mínimamente procesados que conservan sus nutrientes naturales, fibra, y compuestos bioactivos",
+        "why_important": "La calidad nutricional va más allá de macros y calorías. Los alimentos enteros aportan beneficios que los procesados no tienen.",
+        "levels": {
+            "beginner": "Prioriza comida que reconozcas: pollo real sobre nuggets, arroz sobre cereales azucarados, fruta sobre jugo.",
+            "intermediate": "El 80% de tu dieta de alimentos integrales permite un 20% flexible sin sacrificar salud o resultados.",
+            "advanced": "La fibra, polifenoles, y micronutrientes de alimentos enteros afectan microbioma, inflamación, y recuperación.",
+        },
+        "related_concepts": ["micronutrients", "fiber", "food_quality"],
+        "common_mistakes": [
+            "Obsesionarse con macros ignorando calidad",
+            "Creer que suplementos reemplazan comida real",
+            "Demonizar todos los alimentos procesados",
+        ],
+        "analogy": "Contar solo macros es como evaluar una casa solo por metros cuadrados, ignorando materiales y construcción.",
+    },
+    # -------------------------------------------------------------------------
+    # WOMEN'S HEALTH EXPANSION (2 conceptos adicionales)
+    # -------------------------------------------------------------------------
+    "hormonal_contraceptives_impact": {
+        "domain": "womens_health",
+        "name_es": "Impacto de Anticonceptivos Hormonales",
+        "definition": "Efectos de los anticonceptivos hormonales en rendimiento deportivo, composición corporal, y recuperación",
+        "why_important": "Muchas mujeres usan anticonceptivos y desconocen cómo pueden afectar su entrenamiento y resultados.",
+        "levels": {
+            "beginner": "Los anticonceptivos hormonales pueden cambiar cómo responde tu cuerpo al ejercicio. No es malo, pero es bueno saberlo.",
+            "intermediate": "Pueden afectar ganancia muscular ligeramente y recuperación. Los efectos varían según tipo y persona.",
+            "advanced": "La evidencia es mixta. Algunos estudios muestran menor ganancia de masa magra, otros no. Individualización es clave.",
+        },
+        "related_concepts": ["hormonal_fluctuations", "training_adaptation", "recovery"],
+        "common_mistakes": [
+            "Ignorar efectos potenciales completamente",
+            "Culpar anticonceptivos por falta de resultados sin evaluar otros factores",
+            "Cambiar método sin consultar profesional de salud",
+        ],
+        "analogy": "Es como conducir con un auto diferente: funciona, pero puede responder un poco distinto. Hay que conocerlo.",
+    },
+    "female_injury_patterns": {
+        "domain": "womens_health",
+        "name_es": "Patrones de Lesión en Mujeres",
+        "definition": "Diferencias anatómicas y hormonales que afectan el riesgo de ciertas lesiones en mujeres atletas",
+        "why_important": "Las mujeres tienen mayor riesgo de ciertas lesiones (ACL, osteoporosis). Conocerlo permite prevención específica.",
+        "levels": {
+            "beginner": "Las mujeres tienen mayor riesgo de algunas lesiones de rodilla. Entrenar fuerza de piernas ayuda a prevenirlas.",
+            "intermediate": "El riesgo de lesión de ACL aumenta en ciertas fases del ciclo. El entrenamiento neuromuscular reduce el riesgo significativamente.",
+            "advanced": "La tríada de la atleta (bajo peso, amenorrea, baja densidad ósea) es una condición seria que requiere atención médica.",
+        },
+        "related_concepts": ["menstrual_phases", "bone_health", "injury_prevention"],
+        "common_mistakes": [
+            "Ignorar prevención específica para mujeres",
+            "No priorizar entrenamiento de fuerza",
+            "Normalizar amenorrea por ejercicio como 'normal'",
+        ],
+        "analogy": "Es como saber que tu modelo de auto tiene un recall: no significa que es malo, pero debes tomar precauciones específicas.",
+    },
 }
 
 
@@ -676,6 +924,107 @@ EVIDENCE_DATABASE: dict[str, dict] = {
         "practical_takeaway": "Trackea tu ciclo y rendimiento para encontrar TUS patrones. No asumas que las reglas generales aplican a ti.",
         "limitations": "La investigación en mujeres es limitada. La mayoría de estudios de ejercicio se hicieron en hombres. La variabilidad individual es muy alta.",
     },
+    # -------------------------------------------------------------------------
+    # MOBILITY EVIDENCE (new)
+    # -------------------------------------------------------------------------
+    "stretching_injury_prevention": {
+        "claim": "El estiramiento estático antes del ejercicio previene lesiones",
+        "verdict": False,
+        "evidence_grade": "A",
+        "domain": "mobility",
+        "key_studies": [
+            {
+                "authors": "Lauersen et al.",
+                "year": 2014,
+                "type": "Meta-análisis",
+                "finding": "El estiramiento estático no reduce significativamente el riesgo de lesiones. El entrenamiento de fuerza sí.",
+            },
+            {
+                "authors": "Behm & Chaouachi",
+                "year": 2011,
+                "type": "Revisión sistemática",
+                "finding": "Estiramientos >60s pueden reducir fuerza y potencia temporalmente",
+            },
+        ],
+        "mechanism": "El estiramiento pasivo no mejora control neuromuscular ni fuerza en rangos extremos, que son los factores protectores reales.",
+        "practical_takeaway": "Usa movilidad activa y calentamiento dinámico antes de entrenar. El estiramiento estático es mejor post-entreno o separado.",
+        "limitations": "Algunos deportes específicos (gimnasia, danza) pueden beneficiarse de estiramiento pre-actividad.",
+    },
+    "foam_rolling_recovery": {
+        "claim": "El foam rolling acelera la recuperación muscular",
+        "verdict": "Parcialmente verdadero",
+        "evidence_grade": "B",
+        "domain": "mobility",
+        "key_studies": [
+            {
+                "authors": "Cheatham et al.",
+                "year": 2015,
+                "type": "Revisión sistemática",
+                "finding": "Puede mejorar ROM temporalmente y reducir DOMS percibido, pero efectos modestos",
+            },
+            {
+                "authors": "Wiewelhove et al.",
+                "year": 2019,
+                "type": "Meta-análisis",
+                "finding": "Pequeña mejora en recuperación percibida, sin efecto claro en rendimiento",
+            },
+        ],
+        "mechanism": "Probablemente funciona por efectos neurológicos (reducción de tono muscular) más que mecánicos. El efecto es temporal.",
+        "practical_takeaway": "Útil si te hace sentir mejor, pero no es necesario. 1-2 minutos por grupo muscular es suficiente.",
+        "limitations": "Los efectos son modestos y temporales. No reemplaza el sueño, nutrición, o descanso adecuado.",
+    },
+    # -------------------------------------------------------------------------
+    # ANALYTICS EVIDENCE (new)
+    # -------------------------------------------------------------------------
+    "tracking_improves_results": {
+        "claim": "Trackear el entrenamiento mejora los resultados",
+        "verdict": True,
+        "evidence_grade": "B",
+        "domain": "analytics",
+        "key_studies": [
+            {
+                "authors": "Bravata et al.",
+                "year": 2007,
+                "type": "Meta-análisis",
+                "finding": "El uso de podómetros aumentó actividad física en ~27% vs no tracking",
+            },
+            {
+                "authors": "Helms et al.",
+                "year": 2018,
+                "type": "Revisión narrativa",
+                "finding": "El automonitoreo es componente clave de programación exitosa en fuerza",
+            },
+        ],
+        "mechanism": "El tracking aumenta consciencia, permite ajustes informados, y proporciona retroalimentación que refuerza comportamiento.",
+        "practical_takeaway": "Trackea lo básico: ejercicios, peso, reps, series. No necesitas trackear todo, pero lo esencial sí.",
+        "limitations": "El tracking excesivo puede causar obsesión o paralysis by analysis. Encuentra el balance.",
+    },
+    # -------------------------------------------------------------------------
+    # HYDRATION EVIDENCE (new)
+    # -------------------------------------------------------------------------
+    "eight_glasses_water": {
+        "claim": "Necesitas beber 8 vasos de agua al día para estar saludable",
+        "verdict": False,
+        "evidence_grade": "B",
+        "domain": "nutrition",
+        "key_studies": [
+            {
+                "authors": "Valtin",
+                "year": 2002,
+                "type": "Revisión crítica",
+                "finding": "No hay evidencia científica que respalde la recomendación de 8x8 (8 vasos de 8oz)",
+            },
+            {
+                "authors": "Armstrong & Johnson",
+                "year": 2018,
+                "type": "Revisión",
+                "finding": "Las necesidades de hidratación varían enormemente según actividad, clima, y fisiología individual",
+            },
+        ],
+        "mechanism": "El cuerpo tiene mecanismos de sed muy efectivos. La mayoría de personas se hidratan adecuadamente siguiendo su sed.",
+        "practical_takeaway": "Bebe cuando tengas sed. Monitorea color de orina (amarillo claro = bien). Aumenta en ejercicio intenso o calor.",
+        "limitations": "Personas mayores pueden tener sed disminuida. Atletas de alto rendimiento necesitan estrategias específicas.",
+    },
 }
 
 
@@ -872,10 +1221,14 @@ QUIZ_TEMPLATES: dict[str, dict] = {
 
 QUIZ_TOPICS: dict[str, list[str]] = {
     "nutrition_basics": ["energy_balance", "macronutrients", "protein_synthesis", "nutrient_timing"],
+    "nutrition_advanced": ["micronutrients", "hydration", "whole_foods"],
     "training_fundamentals": ["progressive_overload", "hypertrophy", "periodization", "mind_muscle_connection"],
     "behavior_change": ["habit_loop", "intrinsic_motivation", "implementation_intentions", "cognitive_dissonance"],
     "recovery_essentials": ["supercompensation", "sleep_architecture", "active_recovery", "stress_recovery_balance"],
     "womens_health_basics": ["menstrual_phases", "hormonal_fluctuations", "training_cycle_sync", "perimenopause"],
+    "womens_health_advanced": ["hormonal_contraceptives_impact", "female_injury_patterns"],
+    "mobility_fundamentals": ["joint_mobility", "movement_quality", "flexibility_vs_mobility", "breathing_mechanics"],
+    "analytics_essentials": ["training_metrics", "progress_assessment", "data_interpretation", "goal_setting"],
 }
 
 
