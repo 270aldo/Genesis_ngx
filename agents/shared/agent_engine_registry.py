@@ -26,8 +26,12 @@ References:
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 import os
+import threading
+import uuid
 from dataclasses import dataclass, field
 from typing import Any, AsyncIterator, Optional
 
@@ -48,6 +52,15 @@ class AgentInvocationError(AgentEngineError):
 
 class BudgetExceededError(AgentEngineError):
     """Raised when invocation would exceed budget."""
+
+
+@dataclass(frozen=True)
+class _AgentEngineClients:
+    """Holds low-level Vertex AI clients used by the registry."""
+
+    reasoning_engine_service: Any
+    reasoning_engine_execution_service: Any
+    session_service: Any
 
 
 # =============================================================================
@@ -203,6 +216,19 @@ class AgentEngineRegistry:
         """Initialize the registry."""
         self._init_client()
 
+    def _mock_fallback_allowed(self) -> bool:
+        """Whether it is acceptable to fall back to mock mode.
+
+        Mock fallback is convenient for local development, but dangerous in staging/
+        production because it can silently break real orchestration.
+        """
+        allow_mock_env = os.getenv("AGENT_ENGINE_ALLOW_MOCK", "").strip().lower()
+        if allow_mock_env in {"1", "true", "yes", "on"}:
+            return True
+
+        # Default policy: never fall back in staging/production.
+        return self.config.environment not in {"staging", "production"}
+
     def _init_client(self) -> None:
         """Initialize the Vertex AI client.
 
@@ -221,22 +247,65 @@ class AgentEngineRegistry:
             return
 
         try:
-            import vertexai
+            import google.auth
+            from google.api_core.client_options import ClientOptions
+            from google.auth.exceptions import DefaultCredentialsError
+            from google.cloud.aiplatform_v1beta1.services.reasoning_engine_execution_service import (
+                ReasoningEngineExecutionServiceClient,
+            )
+            from google.cloud.aiplatform_v1beta1.services.reasoning_engine_service import (
+                ReasoningEngineServiceClient,
+            )
+            from google.cloud.aiplatform_v1beta1.services.session_service import (
+                SessionServiceClient,
+            )
 
-            self._client = vertexai.Client(
-                project=self.config.project_id,
-                location=self.config.location,
+            # Fail early if ADC isn't configured so we can decide whether to mock.
+            try:
+                google.auth.default()
+            except DefaultCredentialsError as exc:
+                if self._mock_fallback_allowed():
+                    logger.warning(
+                        "No Application Default Credentials available; "
+                        "AgentEngineRegistry operating in mock mode.",
+                    )
+                    self._client = None
+                    return
+                raise AgentEngineError(
+                    "Application Default Credentials not available; refusing to fall "
+                    "back to mock mode in staging/production."
+                ) from exc
+
+            api_endpoint = f"{self.config.location}-aiplatform.googleapis.com"
+            client_options = ClientOptions(api_endpoint=api_endpoint)
+
+            self._client = _AgentEngineClients(
+                reasoning_engine_service=ReasoningEngineServiceClient(
+                    client_options=client_options
+                ),
+                reasoning_engine_execution_service=ReasoningEngineExecutionServiceClient(
+                    client_options=client_options
+                ),
+                session_service=SessionServiceClient(client_options=client_options),
             )
             logger.info(
                 f"AgentEngineRegistry initialized for project={self.config.project_id}, "
                 f"location={self.config.location}"
             )
-        except Exception as exc:
-            logger.warning(
-                f"Could not initialize Vertex AI client: {exc}. "
-                "Operating in mock mode."
-            )
-            self._client = None
+        except ImportError as exc:
+            # Dependency missing or incompatible install. This should never be
+            # silently swallowed in staging/production.
+            if self._mock_fallback_allowed():
+                logger.warning(
+                    f"Could not import Agent Engine dependencies: {exc}. "
+                    "Operating in mock mode."
+                )
+                self._client = None
+                return
+            raise AgentEngineError(
+                "Agent Engine dependencies are missing/incompatible; refusing to fall "
+                "back to mock mode in staging/production."
+            ) from exc
 
     @property
     def is_connected(self) -> bool:
@@ -316,15 +385,202 @@ class AgentEngineRegistry:
         if not self.is_connected:
             return None
 
+        # We no longer fetch a higher-level SDK object here. Instead, we cache the
+        # ReasoningEngine resource name and use the execution client directly.
         resource_name = self.get_resource_name(agent_id)
+        self._agent_cache[agent_id] = resource_name
+        return resource_name
+
+    async def _create_session(self, resource_name: str, user_id: str) -> str:
+        """Create a Vertex AI session for a reasoning engine.
+
+        Returns the session ID (last path segment).
+        """
+        if not self.is_connected:
+            return str(uuid.uuid4())
+
+        from google.cloud.aiplatform_v1beta1.types.session import Session
 
         try:
-            agent = self._client.agent_engines.get(name=resource_name)
-            self._agent_cache[agent_id] = agent
-            return agent
+            operation = await asyncio.to_thread(
+                self._client.session_service.create_session,
+                parent=resource_name,
+                session=Session(
+                    user_id=user_id,
+                    display_name=f"genesis-ngx:{user_id}",
+                ),
+                timeout=self.config.default_timeout_seconds,
+            )
+
+            created_session = await asyncio.to_thread(
+                operation.result,
+                timeout=self.config.default_timeout_seconds,
+            )
+
+            if not created_session.name:
+                return str(uuid.uuid4())
+
+            # projects/.../reasoningEngines/.../sessions/{session}
+            return created_session.name.split("/")[-1]
         except Exception as exc:
-            logger.error(f"Failed to get agent {agent_id}: {exc}")
-            raise AgentInvocationError(f"Failed to get agent {agent_id}: {exc}") from exc
+            logger.error(f"Failed to create session for {resource_name}: {exc}")
+            raise AgentInvocationError(
+                f"Failed to create session for {resource_name}: {exc}"
+            ) from exc
+
+    @staticmethod
+    def _extract_response(output: Any) -> tuple[str, list[dict[str, Any]]]:
+        """Normalize execution output into (response_text, events)."""
+        if output is None:
+            return "", []
+
+        if isinstance(output, str):
+            return output, [{"type": "output", "content": output}]
+
+        if isinstance(output, list):
+            text = "".join(str(item) for item in output)
+            return text, [{"type": "chunk", "content": str(item)} for item in output]
+
+        if isinstance(output, dict):
+            # If the engine already returns structured events, prefer them.
+            events = output.get("events")
+            if isinstance(events, list):
+                response_text = ""
+                for event in events:
+                    if isinstance(event, dict) and "content" in event:
+                        response_text += str(event.get("content", ""))
+                if response_text:
+                    return response_text, [e for e in events if isinstance(e, dict)]
+
+            for key in ("response", "content", "text", "message", "answer", "output"):
+                value = output.get(key)
+                if isinstance(value, str) and value.strip():
+                    return value, [{"type": "output", "content": value, "raw": output}]
+
+            # If there's exactly one string value, use it as the response.
+            string_values = [v for v in output.values() if isinstance(v, str) and v.strip()]
+            if len(string_values) == 1:
+                value = string_values[0]
+                return value, [{"type": "output", "content": value, "raw": output}]
+
+            return json.dumps(output, ensure_ascii=False), [{"type": "output", "content": output}]
+
+        return str(output), [{"type": "output", "content": str(output)}]
+
+    async def _query_reasoning_engine(
+        self,
+        resource_name: str,
+        *,
+        user_id: str,
+        session_id: str,
+        message: str,
+        timeout_seconds: float,
+    ) -> tuple[str, list[dict[str, Any]]]:
+        """Invoke a reasoning engine via the GAPIC execution client."""
+        from google.cloud.aiplatform_v1beta1.types.reasoning_engine_execution_service import (
+            QueryReasoningEngineRequest,
+        )
+        from google.protobuf import json_format
+        from google.protobuf.struct_pb2 import Struct
+
+        input_struct = Struct()
+        input_struct.update(
+            {
+                "user_id": user_id,
+                "session_id": session_id,
+                "message": message,
+            }
+        )
+
+        request = QueryReasoningEngineRequest(
+            name=resource_name,
+            input=input_struct,
+        )
+
+        response = await asyncio.to_thread(
+            self._client.reasoning_engine_execution_service.query_reasoning_engine,
+            request,
+            timeout=timeout_seconds,
+        )
+
+        output = json_format.MessageToDict(response.output)
+        return self._extract_response(output)
+
+    async def _stream_reasoning_engine(
+        self,
+        resource_name: str,
+        *,
+        user_id: str,
+        session_id: str,
+        message: str,
+        timeout_seconds: float,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Stream a reasoning engine response.
+
+        The underlying GAPIC client is synchronous, so we bridge it to async with a
+        background thread.
+        """
+        from google.cloud.aiplatform_v1beta1.types.reasoning_engine_execution_service import (
+            StreamQueryReasoningEngineRequest,
+        )
+        from google.protobuf.struct_pb2 import Struct
+
+        input_struct = Struct()
+        input_struct.update(
+            {
+                "user_id": user_id,
+                "session_id": session_id,
+                "message": message,
+            }
+        )
+
+        request = StreamQueryReasoningEngineRequest(
+            name=resource_name,
+            input=input_struct,
+        )
+
+        queue: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
+        loop = asyncio.get_running_loop()
+
+        def worker() -> None:
+            try:
+                stream = self._client.reasoning_engine_execution_service.stream_query_reasoning_engine(  # type: ignore[union-attr]
+                    request,
+                    timeout=timeout_seconds,
+                )
+                for body in stream:
+                    data = getattr(body, "data", b"") or b""
+                    text = data.decode("utf-8", errors="replace")
+                    event: dict[str, Any]
+                    try:
+                        parsed = json.loads(text)
+                        if isinstance(parsed, dict):
+                            event = parsed
+                        else:
+                            event = {"type": "chunk", "content": str(parsed)}
+                    except json.JSONDecodeError:
+                        event = {"type": "chunk", "content": text}
+
+                    # Ensure downstream can reconstruct text similarly to invoke().
+                    if "content" not in event:
+                        event["content"] = text
+
+                    loop.call_soon_threadsafe(queue.put_nowait, event)
+            except Exception as exc:
+                loop.call_soon_threadsafe(
+                    queue.put_nowait,
+                    {"type": "error", "content": f"{exc}"},
+                )
+            finally:
+                loop.call_soon_threadsafe(queue.put_nowait, None)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+        while True:
+            event = await queue.get()
+            if event is None:
+                return
+            yield event
 
     async def invoke(
         self,
@@ -369,28 +625,25 @@ class AgentEngineRegistry:
         if not self.is_connected:
             return self._mock_invoke(agent_id, message, session_id, user_id, start_time)
 
-        # Get the agent
-        agent = await self._get_agent(agent_id)
+        resource_name = await self._get_agent(agent_id)
 
         try:
             # Create or use session
             if session_id is None:
-                session = agent.create_session(user_id=user_id)
-                session_id = session["id"]
+                session_id = await self._create_session(resource_name, user_id=user_id)
 
-            # Invoke with streaming and collect response
-            events: list[dict[str, Any]] = []
-            response_text = ""
-
-            async for event in agent.async_stream_query(
+            # Use unary query for invoke(); stream is available via invoke_stream().
+            timeout_seconds = max(
+                self.config.default_timeout_seconds,
+                (config["max_latency_ms"] / 1000.0) + 5.0,
+            )
+            response_text, events = await self._query_reasoning_engine(
+                resource_name,
                 user_id=user_id,
                 session_id=session_id,
                 message=message,
-            ):
-                events.append(event)
-                # Extract text from the event if available
-                if isinstance(event, dict) and "content" in event:
-                    response_text += str(event.get("content", ""))
+                timeout_seconds=timeout_seconds,
+            )
 
             latency_ms = (time.time() - start_time) * 1000
 
@@ -492,16 +745,18 @@ class AgentEngineRegistry:
             yield {"type": "done", "content": ""}
             return
 
-        agent = await self._get_agent(agent_id)
+        resource_name = await self._get_agent(agent_id)
 
         if session_id is None:
-            session = agent.create_session(user_id=user_id)
-            session_id = session["id"]
+            session_id = await self._create_session(resource_name, user_id=user_id)
 
-        async for event in agent.async_stream_query(
+        timeout_seconds = self.config.default_timeout_seconds
+        async for event in self._stream_reasoning_engine(
+            resource_name,
             user_id=user_id,
             session_id=session_id,
             message=message,
+            timeout_seconds=timeout_seconds,
         ):
             yield event
 

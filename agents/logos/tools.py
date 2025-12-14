@@ -1670,10 +1670,11 @@ def generate_quiz(
                 concepts_to_cover.append(key)
 
     if not concepts_to_cover:
+        available_topics = list(QUIZ_TOPICS.keys()) + [domain.value for domain in Domain]
         return {
             "status": "error",
             "message": f"No pude encontrar contenido para crear un quiz sobre '{topic}'.",
-            "available_topics": list(QUIZ_TOPICS.keys()) + ["fitness", "nutrition", "behavior", "recovery", "womens_health"],
+            "available_topics": available_topics,
         }
 
     # Generar preguntas

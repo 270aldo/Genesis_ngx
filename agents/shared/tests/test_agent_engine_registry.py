@@ -11,6 +11,7 @@ import pytest
 from agents.shared.agent_engine_registry import (
     AGENT_CONFIGS,
     AgentEngineConfig,
+    AgentEngineError,
     AgentEngineRegistry,
     AgentNotFoundError,
     InvocationResult,
@@ -172,6 +173,54 @@ class TestAgentEngineRegistry:
     def test_is_not_connected_without_credentials(self, registry):
         """Should not be connected without Vertex AI credentials."""
         # In test environment, we don't have real credentials
+        assert not registry.is_connected
+
+
+class TestInitMockFallbackPolicy:
+    """Tests for mock fallback policy during client init."""
+
+    def test_production_refuses_mock_fallback_without_adc(self, monkeypatch):
+        """Production should fail fast if ADC is missing."""
+        monkeypatch.delenv("AGENT_ENGINE_ALLOW_MOCK", raising=False)
+
+        import google.auth
+        from google.auth.exceptions import DefaultCredentialsError
+
+        def _raise_default_credentials_error(*args, **kwargs):
+            raise DefaultCredentialsError("no ADC configured")
+
+        monkeypatch.setattr(google.auth, "default", _raise_default_credentials_error)
+
+        config = AgentEngineConfig(
+            project_id="test-project",
+            location="us-central1",
+            environment="production",
+            resource_prefix="genesis-ngx",
+        )
+
+        with pytest.raises(AgentEngineError):
+            AgentEngineRegistry(config=config)
+
+    def test_development_allows_mock_fallback_without_adc(self, monkeypatch):
+        """Development may fall back to mock mode if ADC is missing."""
+        monkeypatch.delenv("AGENT_ENGINE_ALLOW_MOCK", raising=False)
+
+        import google.auth
+        from google.auth.exceptions import DefaultCredentialsError
+
+        def _raise_default_credentials_error(*args, **kwargs):
+            raise DefaultCredentialsError("no ADC configured")
+
+        monkeypatch.setattr(google.auth, "default", _raise_default_credentials_error)
+
+        config = AgentEngineConfig(
+            project_id="test-project",
+            location="us-central1",
+            environment="development",
+            resource_prefix="genesis-ngx",
+        )
+
+        registry = AgentEngineRegistry(config=config)
         assert not registry.is_connected
 
 
