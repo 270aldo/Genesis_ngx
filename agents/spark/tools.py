@@ -11,7 +11,6 @@ Incluye funciones para:
 from __future__ import annotations
 
 from enum import Enum
-from typing import Literal
 
 from google.adk.tools import FunctionTool
 
@@ -1005,8 +1004,8 @@ def _create_implementation_intentions(goal: str) -> list[str]:
     """Crea intenciones de implementación."""
     return [
         f"Cuando suene mi alarma de las 7 AM, voy a [acción para {goal}]",
-        f"Si me siento tentado a saltarme, voy a hacer la versión de 2 minutos",
-        f"Cuando sea [día difícil], voy a hacer la versión mínima",
+        "Si me siento tentado a saltarme, voy a hacer la versión de 2 minutos",
+        "Cuando sea [día difícil], voy a hacer la versión mínima",
     ]
 
 
@@ -1114,15 +1113,15 @@ def _generate_framework_strategy(
     if "four_laws" in framework:
         strategy["steps"] = [
             f"1. Hazlo obvio: Define cuándo y dónde harás {target}",
-            f"2. Hazlo atractivo: Conecta con beneficio inmediato",
-            f"3. Hazlo fácil: Empieza con versión de 2 minutos",
-            f"4. Hazlo satisfactorio: Celebra cada vez",
+            "2. Hazlo atractivo: Conecta con beneficio inmediato",
+            "3. Hazlo fácil: Empieza con versión de 2 minutos",
+            "4. Hazlo satisfactorio: Celebra cada vez",
         ]
     elif "formula" in framework:
         strategy["steps"] = [
-            f"1. Elige tu ancla: 'Después de [hábito existente]'",
+            "1. Elige tu ancla: 'Después de [hábito existente]'",
             f"2. Define hábito tiny: '{target} por 30 segundos'",
-            f"3. Celebra inmediatamente: 'Shine!'",
+            "3. Celebra inmediatamente: 'Shine!'",
         ]
     else:
         strategy["steps"] = framework.get("steps", [])

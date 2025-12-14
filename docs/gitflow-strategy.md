@@ -7,7 +7,7 @@
 #### `main`
 - **Propósito**: Código en producción, siempre deployable
 - **Protección**: Requiere PR + 2 aprobaciones + todos los checks verdes
-- **Deploy**: Automático a producción (Cloud Run)
+- **Deploy**: Automático a producción (Agent Engine)
 - **Tags**: Cada release se tagea con semver (v1.0.0, v1.1.0, etc.)
 - **Naming**: Siempre `main`
 
@@ -87,14 +87,14 @@
 
 ### Staging
 - **Branch**: `develop`
-- **Servicios**: Cloud Run (staging), Supabase staging
+- **Servicios**: Agent Engine (staging), Supabase staging
 - **Variables**: Secret Manager (staging/)
 - **Deploy**: Automático en merge a `develop`
 - **URL**: `https://staging-*.run.app`
 
 ### Production
 - **Branch**: `main`
-- **Servicios**: Cloud Run (prod), Supabase prod
+- **Servicios**: Agent Engine (prod), Supabase prod
 - **Variables**: Secret Manager (prod/)
 - **Deploy**: Automático en merge a `main` + manual approval
 - **URL**: `https://api.genesis-ngx.com`

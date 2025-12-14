@@ -13,7 +13,6 @@ MVP Scope:
 from __future__ import annotations
 
 from enum import Enum
-from typing import Literal
 import random
 
 from google.adk.tools import FunctionTool
@@ -979,7 +978,8 @@ def explain_concept(
         }
 
     # Construir explicación según nivel
-    level_info = LEARNING_LEVELS[level]
+    # level_info unused but kept for potential future use
+    _level_info = LEARNING_LEVELS[level]
     level_explanation = concept_data["levels"].get(level, concept_data["levels"]["intermediate"])
 
     response = {

@@ -17,10 +17,7 @@ from agents.nova.prompts import NOVA_SYSTEM_PROMPT
 from agents.nova.tools import (
     ALL_TOOLS,
     recommend_supplements,
-    design_stack,
-    create_timing_protocol,
     check_interactions,
-    grade_evidence,
     SUPPLEMENTS_DATABASE,
     GOAL_TO_SUPPLEMENTS,
     TIMING_WINDOWS,

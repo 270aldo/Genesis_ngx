@@ -2,25 +2,55 @@
 
 ## Project Overview
 
-This is a multi-agent wellness system named "Genesis NGX". It's built using Google's Agent Development Kit (ADK), Gemini 2.5, and Supabase. The system features a main orchestrator called NEXUS and specialized agents for fitness, nutrition, and mental health. These agents run on Cloud Run and communicate using the A2A (Agent-to-Agent) v0.3 protocol. Supabase serves as the single source of truth for all data.
+Genesis NGX is a multi-agent wellness system built using Google's Agent Development Kit (ADK), Vertex AI Agent Engine, Gemini 2.5 models, and Supabase. The system features a main orchestrator (GENESIS_X) and 12 specialized agents for fitness, nutrition, behavior, analytics, and women's health. Agents communicate using the A2A (Agent-to-Agent) v0.3 protocol managed natively by Agent Engine.
 
-## Building and Running
-
-The project is written in Python and uses FastAPI. To run the main Nexus agent:
+## Running Locally
 
 ```bash
+# Setup environment
 python -m venv .venv
 source .venv/bin/activate
-pip install -r agents/nexus/requirements.txt
-uvicorn "agents.nexus.main:app" --host 0.0.0.0 --port 8080 --reload
+pip install -r requirements.txt
+
+# Run ADK playground (all agents)
+adk web
+
+# Run specific agent
+adk run genesis_x
+adk run logos
 ```
 
-To apply Supabase database migrations:
+## Running Tests
 
 ```bash
-supabase db push
+# All tests
+pytest agents/ -v
+
+# With coverage (80% minimum required)
+pytest agents/ -v --cov=agents --cov-fail-under=80
+
+# Specific agent
+pytest agents/logos/tests/ -v
+```
+
+## Database Migrations
+
+```bash
+supabase db push --dry-run   # Validate
+supabase db push             # Apply
 ```
 
 ## Development Conventions
 
-The project follows the "Conventional Commits" specification for commit messages. All code is linted with `ruff` or `flake8` and tested with `pytest`. Pull requests require at least one approval and must pass all CI checks. For more details, see `docs/git-strategy.md` and `CONTRIBUTING.md`.
+- **Commits:** Conventional Commits format (`feat:`, `fix:`, `chore:`, etc.)
+- **Linting:** `ruff check agents/`
+- **Testing:** `pytest` with 80% coverage minimum
+- **Branches:** `develop` (integration), `main` (production)
+- **PRs:** Require approval and passing CI checks
+
+## Key Documentation
+
+- `CLAUDE.md` - Project context and architecture details
+- `docs/AGENTS.md` - Agent implementation guide
+- `ADR/` - Architecture Decision Records
+- `docs/LEGACY.md` - Deprecated components and migration info
