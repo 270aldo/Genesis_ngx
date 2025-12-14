@@ -472,29 +472,14 @@ async def invoke_specialist(
 
     logger.info(f"Invocando agente {agent_id}.{method} para user {user_id}")
 
-    # BLAZE: Invoke via Agent Engine Registry
-    if agent_id == "blaze":
-        return await _invoke_via_registry(
-            agent_id=agent_id,
-            method=method,
-            params=params,
-            user_id=user_id,
-            budget_usd=budget_usd,
-        )
-
-    # Otros agentes: placeholder hasta PR #3c
-    return {
-        "agent_id": agent_id,
-        "method": method,
-        "result": {
-            "placeholder": True,
-            "message": f"Agente {agent_id} respondería al método {method}",
-            "params_received": params,
-        },
-        "tokens_used": 0,
-        "cost_usd": 0.0,
-        "status": "success",
-    }
+    # All specialists: Invoke via Agent Engine Registry
+    return await _invoke_via_registry(
+        agent_id=agent_id,
+        method=method,
+        params=params,
+        user_id=user_id,
+        budget_usd=budget_usd,
+    )
 
 
 async def _invoke_via_registry(
@@ -568,6 +553,9 @@ async def _invoke_via_registry(
 def _build_agent_message(method: str, params: dict[str, Any]) -> str:
     """Construye el mensaje para enviar al agente basado en method y params.
 
+    Incluye mensajes específicos para los métodos de todos los 11 especialistas:
+    BLAZE, SAGE, ATLAS, TEMPO, WAVE, STELLA, METABOL, MACRO, SPARK, NOVA, LUNA, LOGOS.
+
     Args:
         method: Nombre del método/tool a invocar
         params: Parámetros del método
@@ -578,12 +566,62 @@ def _build_agent_message(method: str, params: dict[str, Any]) -> str:
     # Formatear parámetros como contexto natural
     params_str = ", ".join(f"{k}={v}" for k, v in params.items())
 
-    # Mensajes específicos por método de BLAZE
+    # Mensajes específicos por método de cada especialista
     method_messages = {
+        # BLAZE - Strength & Hypertrophy
         "generate_workout": f"Genera un workout con estos parámetros: {params_str}",
         "calculate_1rm": f"Calcula el 1RM con: {params_str}",
         "suggest_progression": f"Sugiere progresión con: {params_str}",
         "design_training_block": f"Diseña un bloque de entrenamiento con: {params_str}",
+        # SAGE - Nutrition Strategy
+        "analyze_diet": f"Analiza esta dieta: {params_str}",
+        "generate_meal_plan": f"Genera un plan de comidas con: {params_str}",
+        "suggest_adjustments": f"Sugiere ajustes nutricionales: {params_str}",
+        # ATLAS - Mobility & Flexibility
+        "assess_mobility": f"Evalúa la movilidad: {params_str}",
+        "generate_mobility_routine": f"Genera rutina de movilidad: {params_str}",
+        "suggest_stretches": f"Sugiere estiramientos: {params_str}",
+        # TEMPO - Cardio & Endurance
+        "calculate_zones": f"Calcula zonas cardíacas: {params_str}",
+        "generate_cardio_session": f"Genera sesión de cardio: {params_str}",
+        "analyze_performance": f"Analiza rendimiento cardio: {params_str}",
+        # WAVE - Recovery
+        "assess_recovery": f"Evalúa el estado de recuperación: {params_str}",
+        "generate_recovery_protocol": f"Genera protocolo de recuperación: {params_str}",
+        "recommend_deload": f"Recomienda deload: {params_str}",
+        "calculate_sleep_needs": f"Calcula necesidades de sueño: {params_str}",
+        # STELLA - Analytics
+        "generate_report": f"Genera reporte analítico: {params_str}",
+        "analyze_trends": f"Analiza tendencias: {params_str}",
+        "create_dashboard": f"Crea dashboard: {params_str}",
+        # METABOL - Metabolism & TDEE
+        "calculate_tdee": f"Calcula TDEE: {params_str}",
+        "analyze_metabolic_adaptation": f"Analiza adaptación metabólica: {params_str}",
+        "suggest_metabolic_adjustments": f"Sugiere ajustes metabólicos: {params_str}",
+        # MACRO - Macronutrients
+        "calculate_macros": f"Calcula macros: {params_str}",
+        "optimize_protein": f"Optimiza distribución de proteína: {params_str}",
+        "cycle_carbs": f"Diseña ciclado de carbohidratos: {params_str}",
+        # SPARK - Behavior & Habits
+        "assess_readiness": f"Evalúa disposición al cambio: {params_str}",
+        "design_habit": f"Diseña hábito: {params_str}",
+        "analyze_barriers": f"Analiza barreras: {params_str}",
+        # NOVA - Supplementation
+        "evaluate_supplement": f"Evalúa suplemento: {params_str}",
+        "create_stack": f"Crea stack de suplementos: {params_str}",
+        "check_interactions": f"Verifica interacciones: {params_str}",
+        # LUNA - Women's Health
+        "track_cycle": f"Rastrea ciclo menstrual: {params_str}",
+        "adapt_training": f"Adapta entrenamiento al ciclo: {params_str}",
+        "analyze_patterns": f"Analiza patrones hormonales: {params_str}",
+        # LOGOS - Education
+        "explain_concept": f"Explica este concepto: {params_str}",
+        "present_evidence": f"Presenta evidencia sobre: {params_str}",
+        "debunk_myth": f"Analiza este mito: {params_str}",
+        "create_deep_dive": f"Crea deep-dive sobre: {params_str}",
+        "generate_quiz": f"Genera quiz sobre: {params_str}",
+        # Generic respond method (used by orchestrator)
+        "respond": f"Responde a esta consulta: {params_str}",
     }
 
     return method_messages.get(
