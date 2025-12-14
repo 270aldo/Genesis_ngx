@@ -176,19 +176,48 @@ class TestInvokeSpecialist:
         assert result["method"] == "calculate_1rm"
 
     @pytest.mark.asyncio
-    async def test_invoke_other_agent_placeholder(self):
-        """Otros agentes deben retornar placeholder (hasta PR #3c)."""
+    async def test_invoke_sage_via_registry(self):
+        """Debe invocar SAGE usando el AgentEngineRegistry."""
         result = await invoke_specialist(
             agent_id="sage",
-            method="respond",
-            params={"message": "test"},
+            method="analyze_diet",
+            params={"diet_type": "mediterranean"},
             user_id="123e4567-e89b-12d3-a456-426614174000",
             budget_usd=0.01,
         )
 
         assert result["agent_id"] == "sage"
         assert result["status"] == "success"
-        assert result["result"]["placeholder"] is True
+        assert "[MOCK]" in result["result"]["response"]
+
+    @pytest.mark.asyncio
+    async def test_invoke_all_specialists_via_registry(self):
+        """Todos los 11 especialistas deben funcionar via registry."""
+        specialists = [
+            ("atlas", "assess_mobility"),
+            ("tempo", "calculate_zones"),
+            ("wave", "assess_recovery"),
+            ("stella", "generate_report"),
+            ("metabol", "calculate_tdee"),
+            ("macro", "calculate_macros"),
+            ("spark", "assess_readiness"),
+            ("nova", "evaluate_supplement"),
+            ("luna", "track_cycle"),
+            ("logos", "explain_concept"),
+        ]
+
+        for agent_id, method in specialists:
+            result = await invoke_specialist(
+                agent_id=agent_id,
+                method=method,
+                params={"test": "value"},
+                user_id="123e4567-e89b-12d3-a456-426614174000",
+                budget_usd=0.01,
+            )
+
+            assert result["agent_id"] == agent_id, f"Failed for {agent_id}"
+            assert result["status"] == "success", f"Failed for {agent_id}"
+            assert "[MOCK]" in result["result"]["response"], f"Failed for {agent_id}"
 
     @pytest.mark.asyncio
     async def test_invoke_invalid_agent(self):
@@ -220,6 +249,7 @@ class TestInvokeSpecialist:
 class TestBuildAgentMessage:
     """Tests para _build_agent_message helper."""
 
+    # BLAZE methods
     def test_generate_workout_message(self):
         """Debe construir mensaje para generate_workout."""
         message = _build_agent_message(
@@ -240,6 +270,61 @@ class TestBuildAgentMessage:
 
         assert "Calcula el 1RM" in message
         assert "weight=100" in message
+
+    # SAGE methods
+    def test_analyze_diet_message(self):
+        """Debe construir mensaje para analyze_diet."""
+        message = _build_agent_message(
+            method="analyze_diet",
+            params={"diet_type": "keto"},
+        )
+
+        assert "Analiza esta dieta" in message
+        assert "diet_type=keto" in message
+
+    # TEMPO methods
+    def test_calculate_zones_message(self):
+        """Debe construir mensaje para calculate_zones."""
+        message = _build_agent_message(
+            method="calculate_zones",
+            params={"max_hr": 190, "resting_hr": 60},
+        )
+
+        assert "Calcula zonas cardíacas" in message
+        assert "max_hr=190" in message
+
+    # WAVE methods
+    def test_assess_recovery_message(self):
+        """Debe construir mensaje para assess_recovery."""
+        message = _build_agent_message(
+            method="assess_recovery",
+            params={"sleep_quality": 4, "soreness": 2},
+        )
+
+        assert "Evalúa el estado de recuperación" in message
+        assert "sleep_quality=4" in message
+
+    # LOGOS methods
+    def test_explain_concept_message(self):
+        """Debe construir mensaje para explain_concept."""
+        message = _build_agent_message(
+            method="explain_concept",
+            params={"concept": "progressive_overload", "level": "beginner"},
+        )
+
+        assert "Explica este concepto" in message
+        assert "concept=progressive_overload" in message
+
+    # Generic respond method
+    def test_respond_message(self):
+        """Debe construir mensaje para respond."""
+        message = _build_agent_message(
+            method="respond",
+            params={"message": "test query"},
+        )
+
+        assert "Responde a esta consulta" in message
+        assert "message=test query" in message
 
     def test_unknown_method_message(self):
         """Debe construir mensaje genérico para métodos desconocidos."""
