@@ -1,26 +1,46 @@
-# Contribuciones
+# Contributing / Contribuciones
 
-## Flujo de trabajo
+## Workflow / Flujo de trabajo
 
-1. **Crear rama** desde `develop` (o `main` si se usa trunk):
-   - `feature/<ticket>-descripcion`
-   - `fix/<ticket>-bug`
-   - `hotfix/<ticket>-critico`
-2. Mantener commits con [Conventional Commits](https://www.conventionalcommits.org/):
-   - `feat: agrega agente de nutrición`
-   - `fix: corrige RLS para mensajes`
-3. Abrir Pull Request hacia la rama objetivo:
-   - Al menos 1 aprobación.
-   - Checks verdes (`lint-test`, `supabase-migrate --dry-run`).
-4. Merge mediante “Squash & Merge” (historial limpio) o “Merge commit” según política definida.
-5. Borrar la rama después del merge.
+1. **Create branch from `main`** (trunk-based development):
+   - `feature/<description>` - New features
+   - `fix/<description>` - Bug fixes
+   - `chore/<description>` - Maintenance tasks
+   - `docs/<description>` - Documentation updates
 
-## Requisitos antes de crear PR
+2. **Follow [Conventional Commits](https://www.conventionalcommits.org/):**
+   - `feat(logos): add quiz generation tool`
+   - `fix(genesis_x): correct intent classification`
+   - `docs: update architecture guide`
+   - `chore: upgrade dependencies`
 
-- `ruff check` o `flake8` para linting.
-- `pytest` (si aplica) y `scripts/benchmark_gemini.py` en modo reducido si afecta prompts.
-- Validar migraciones: `supabase db lint` y `supabase db push --dry-run`.
-- Actualizar documentación (ADR, README) si la decisión cambia.
+3. **Open Pull Request to `main`:**
+   - At least 1 approval required
+   - Green checks: `lint-test`, `security-scan`
+   - Coverage must be ≥80%
+
+4. **Merge via "Squash & Merge"** for clean history
+
+5. **Delete branch** after merge
+
+## Pre-PR Requirements / Requisitos antes de crear PR
+
+```bash
+# 1. Linting
+ruff check agents/
+
+# 2. Tests with coverage
+pytest agents/ -v --cov=agents --cov-fail-under=80
+
+# 3. Validate ADK configuration
+python -c "import yaml; yaml.safe_load(open('adk.yaml'))"
+
+# 4. Validate migrations (if applicable)
+supabase db lint
+supabase db push --dry-run
+```
+
+- Update documentation (ADR, README, CLAUDE.md) if architecture changes
 
 ## Etiquetas y Issues
 

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Genesis NGX is a multi-agent wellness system using Google's ADK (Agent Development Kit), Gemini 2.5 models, and Supabase as the single source of truth.
 
-**Project Status: v1.0.0 - All 13 agents implemented (1045+ tests, 89% coverage)**
+**Project Status: v1.0.0 - All 13 agents implemented (1104+ tests, 89% coverage)**
 
 ### System Architecture
 
@@ -178,7 +178,7 @@ logos = Agent(
 )
 ```
 
-MVP databases: 20 concepts, 15 myths, 10 evidences across 5 domains
+Expanded databases: 33 concepts, 15 myths, 14 evidences across 7 domains (fitness, nutrition, behavior, recovery, womens_health, mobility, analytics)
 
 ### Database Security Pattern
 
@@ -298,7 +298,7 @@ Before making architectural changes, consult existing ADRs in `ADR/`:
 
 ## Testing Strategy
 
-**Current Status: 1045+ tests, 89% coverage**
+**Current Status: 1104+ tests, 89% coverage**
 
 Target: ≥80% coverage for agent code.
 
