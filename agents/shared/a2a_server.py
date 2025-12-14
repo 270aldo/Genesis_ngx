@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any, AsyncGenerator, Dict, Optional
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 from sse_starlette.sse import EventSourceResponse

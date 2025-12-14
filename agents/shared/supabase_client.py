@@ -152,13 +152,18 @@ class SupabaseClient:
             raise SupabaseError("Service client no inicializado")
         return self._service_client
 
-    def set_auth_token(self, token: str) -> None:
-        """Configura el token de autenticación para el usuario.
+    def set_auth_session(self, access_token: str, refresh_token: str = "") -> None:
+        """Configura la sesión de autenticación para el usuario.
 
         Args:
-            token: JWT token de Supabase Auth
+            access_token: JWT access token de Supabase Auth
+            refresh_token: Refresh token (opcional, puede estar vacío para tokens de corta vida)
+
+        Note:
+            Para agentes usando service_role, usar `service_client` directamente
+            en lugar de este método. Ver docs/AUTH_STRATEGY.md para más detalles.
         """
-        self.client.auth.set_session(token)
+        self.client.auth.set_session(access_token, refresh_token)
 
     # =========================================================================
     # RPCs para Agentes
@@ -206,7 +211,7 @@ class SupabaseClient:
         client = self.service_client
         if auth_token:
             client = self.client
-            self.set_auth_token(auth_token)
+            self.set_auth_session(auth_token)
 
         try:
             response = client.rpc(
@@ -255,7 +260,7 @@ class SupabaseClient:
         Returns:
             UUID del mensaje creado
         """
-        self.set_auth_token(auth_token)
+        self.set_auth_session(auth_token)
 
         try:
             response = self.client.rpc(
@@ -274,7 +279,7 @@ class SupabaseClient:
         except Exception as exc:
             error_msg = str(exc).lower()
             if "forbidden" in error_msg:
-                raise SupabaseRLSError(f"Usuario no es dueño de la conversación") from exc
+                raise SupabaseRLSError("Usuario no es dueño de la conversación") from exc
             raise SupabaseError(f"Error agregando mensaje: {exc}") from exc
 
     @retry(
@@ -306,7 +311,7 @@ class SupabaseClient:
         client = self.service_client
         if auth_token:
             client = self.client
-            self.set_auth_token(auth_token)
+            self.set_auth_session(auth_token)
 
         try:
             response = client.rpc(
@@ -346,7 +351,7 @@ class SupabaseClient:
             Conversation o None si no existe
         """
         if auth_token:
-            self.set_auth_token(auth_token)
+            self.set_auth_session(auth_token)
 
         try:
             response = (
@@ -382,7 +387,7 @@ class SupabaseClient:
             Lista de mensajes ordenados por created_at desc
         """
         if auth_token:
-            self.set_auth_token(auth_token)
+            self.set_auth_session(auth_token)
 
         try:
             response = (
@@ -413,7 +418,7 @@ class SupabaseClient:
         Returns:
             Conversación creada
         """
-        self.set_auth_token(auth_token)
+        self.set_auth_session(auth_token)
 
         try:
             response = (
@@ -451,7 +456,7 @@ class SupabaseClient:
         Returns:
             Lista de conversaciones ordenadas por created_at desc
         """
-        self.set_auth_token(auth_token)
+        self.set_auth_session(auth_token)
 
         try:
             response = (
