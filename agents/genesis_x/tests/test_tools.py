@@ -2,21 +2,27 @@
 
 Cubre:
 - classify_intent: Clasificación de intents
-- invoke_specialist: Invocación de agentes
+- invoke_specialist: Invocación de agentes (async con AgentEngineRegistry)
 - build_consensus: Construcción de consenso
 - Security: Validación de inputs
 """
 
 from __future__ import annotations
 
+import pytest
 
 from agents.genesis_x.tools import (
     classify_intent,
     invoke_specialist,
     build_consensus,
+    _build_agent_message,
     IntentCategory,
     INTENT_TO_AGENTS,
     AGENT_MODELS,
+)
+from agents.shared.agent_engine_registry import (
+    AgentEngineConfig,
+    reset_registry,
 )
 
 
@@ -120,24 +126,74 @@ class TestClassifyIntent:
 
 
 class TestInvokeSpecialist:
-    """Tests para invoke_specialist."""
+    """Tests para invoke_specialist (async con AgentEngineRegistry)."""
 
-    def test_invoke_valid_agent(self):
-        """Debe invocar un agente válido."""
-        result = invoke_specialist(
+    @pytest.fixture(autouse=True)
+    def setup_registry(self):
+        """Setup test registry in mock mode."""
+        reset_registry()
+        # Force test environment for mock mode
+        config = AgentEngineConfig(
+            project_id="test-project",
+            location="us-central1",
+            environment="test",
+        )
+        # Initialize with test config by getting registry
+        from agents.shared.agent_engine_registry import get_registry
+        get_registry(config=config)
+        yield
+        reset_registry()
+
+    @pytest.mark.asyncio
+    async def test_invoke_blaze_via_registry(self):
+        """Debe invocar BLAZE usando el AgentEngineRegistry."""
+        result = await invoke_specialist(
             agent_id="blaze",
-            method="respond",
-            params={"message": "test"},
+            method="generate_workout",
+            params={"goal": "strength", "level": "intermediate"},
             user_id="123e4567-e89b-12d3-a456-426614174000",
             budget_usd=0.01,
         )
 
         assert result["agent_id"] == "blaze"
         assert result["status"] == "success"
+        # En mock mode, la respuesta contiene [MOCK]
+        assert "[MOCK]" in result["result"]["response"]
 
-    def test_invoke_invalid_agent(self):
+    @pytest.mark.asyncio
+    async def test_invoke_blaze_with_calculate_1rm(self):
+        """Debe invocar BLAZE con método calculate_1rm."""
+        result = await invoke_specialist(
+            agent_id="blaze",
+            method="calculate_1rm",
+            params={"weight": 100, "reps": 5},
+            user_id="123e4567-e89b-12d3-a456-426614174000",
+            budget_usd=0.01,
+        )
+
+        assert result["agent_id"] == "blaze"
+        assert result["status"] == "success"
+        assert result["method"] == "calculate_1rm"
+
+    @pytest.mark.asyncio
+    async def test_invoke_other_agent_placeholder(self):
+        """Otros agentes deben retornar placeholder (hasta PR #3c)."""
+        result = await invoke_specialist(
+            agent_id="sage",
+            method="respond",
+            params={"message": "test"},
+            user_id="123e4567-e89b-12d3-a456-426614174000",
+            budget_usd=0.01,
+        )
+
+        assert result["agent_id"] == "sage"
+        assert result["status"] == "success"
+        assert result["result"]["placeholder"] is True
+
+    @pytest.mark.asyncio
+    async def test_invoke_invalid_agent(self):
         """Debe manejar agentes inválidos."""
-        result = invoke_specialist(
+        result = await invoke_specialist(
             agent_id="agente_inexistente",
             method="respond",
             params={},
@@ -147,9 +203,10 @@ class TestInvokeSpecialist:
         assert result["status"] == "error"
         assert "no disponible" in result["result"]["error"]
 
-    def test_budget_enforcement(self):
+    @pytest.mark.asyncio
+    async def test_budget_enforcement(self):
         """Debe respetar límites de presupuesto."""
-        result = invoke_specialist(
+        result = await invoke_specialist(
             agent_id="blaze",
             method="respond",
             params={},
@@ -158,6 +215,41 @@ class TestInvokeSpecialist:
         )
 
         assert result["status"] == "budget_exceeded"
+
+
+class TestBuildAgentMessage:
+    """Tests para _build_agent_message helper."""
+
+    def test_generate_workout_message(self):
+        """Debe construir mensaje para generate_workout."""
+        message = _build_agent_message(
+            method="generate_workout",
+            params={"goal": "strength", "level": "beginner"},
+        )
+
+        assert "Genera un workout" in message
+        assert "goal=strength" in message
+        assert "level=beginner" in message
+
+    def test_calculate_1rm_message(self):
+        """Debe construir mensaje para calculate_1rm."""
+        message = _build_agent_message(
+            method="calculate_1rm",
+            params={"weight": 100, "reps": 5},
+        )
+
+        assert "Calcula el 1RM" in message
+        assert "weight=100" in message
+
+    def test_unknown_method_message(self):
+        """Debe construir mensaje genérico para métodos desconocidos."""
+        message = _build_agent_message(
+            method="custom_method",
+            params={"param1": "value1"},
+        )
+
+        assert "Ejecuta custom_method" in message
+        assert "param1=value1" in message
 
 
 class TestBuildConsensus:

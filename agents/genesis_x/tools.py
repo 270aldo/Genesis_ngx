@@ -19,6 +19,10 @@ from typing import Any, Optional
 
 from google.adk.tools import FunctionTool
 
+from agents.shared.agent_engine_registry import (
+    AgentNotFoundError,
+    get_registry,
+)
 from agents.shared.cost_calculator import CostCalculator
 from agents.shared.security import SecurityValidator
 from agents.shared.supabase_client import (
@@ -399,7 +403,7 @@ def classify_intent(
     }
 
 
-def invoke_specialist(
+async def invoke_specialist(
     agent_id: str,
     method: str,
     params: dict[str, Any],
@@ -408,9 +412,9 @@ def invoke_specialist(
 ) -> dict[str, Any]:
     """Invoca un agente especializado para obtener información específica.
 
-    En el contexto de ADK + Agent Engine, esta función prepara la invocación
-    que será manejada por el sistema A2A nativo. Por ahora, retorna un
-    placeholder que será reemplazado por la invocación real del sub-agente.
+    Utiliza el AgentEngineRegistry para invocar agentes desplegados en
+    Vertex AI Agent Engine. Actualmente soporta BLAZE; otros agentes
+    retornan placeholder hasta PR #3c.
 
     Args:
         agent_id: ID del agente a invocar (blaze, sage, etc.)
@@ -466,10 +470,19 @@ def invoke_specialist(
             "status": "budget_exceeded",
         }
 
-    # En producción, aquí se invoca el agente via A2A
-    # Por ahora, retornamos un placeholder que indica éxito
     logger.info(f"Invocando agente {agent_id}.{method} para user {user_id}")
 
+    # BLAZE: Invoke via Agent Engine Registry
+    if agent_id == "blaze":
+        return await _invoke_via_registry(
+            agent_id=agent_id,
+            method=method,
+            params=params,
+            user_id=user_id,
+            budget_usd=budget_usd,
+        )
+
+    # Otros agentes: placeholder hasta PR #3c
     return {
         "agent_id": agent_id,
         "method": method,
@@ -482,6 +495,101 @@ def invoke_specialist(
         "cost_usd": 0.0,
         "status": "success",
     }
+
+
+async def _invoke_via_registry(
+    agent_id: str,
+    method: str,
+    params: dict[str, Any],
+    user_id: str,
+    budget_usd: float,
+) -> dict[str, Any]:
+    """Invoca un agente usando el AgentEngineRegistry.
+
+    Args:
+        agent_id: ID del agente a invocar
+        method: Método/tool a ejecutar
+        params: Parámetros para el método
+        user_id: ID del usuario
+        budget_usd: Presupuesto máximo
+
+    Returns:
+        dict con resultado de la invocación
+    """
+    try:
+        registry = get_registry()
+
+        # Construir mensaje para el agente basado en method y params
+        message = _build_agent_message(method, params)
+
+        # Invocar el agente via registry
+        result = await registry.invoke(
+            agent_id=agent_id,
+            message=message,
+            user_id=user_id,
+            budget_usd=budget_usd,
+        )
+
+        return {
+            "agent_id": result.agent_id,
+            "method": method,
+            "result": {
+                "response": result.response,
+                "events": result.events,
+            },
+            "tokens_used": result.tokens_used,
+            "cost_usd": result.cost_usd,
+            "latency_ms": result.latency_ms,
+            "status": result.status,
+        }
+
+    except AgentNotFoundError as e:
+        logger.error(f"Agent not found: {e}")
+        return {
+            "agent_id": agent_id,
+            "method": method,
+            "result": {"error": str(e)},
+            "tokens_used": 0,
+            "cost_usd": 0.0,
+            "status": "error",
+        }
+    except Exception as e:
+        logger.error(f"Error invoking agent {agent_id}: {e}")
+        return {
+            "agent_id": agent_id,
+            "method": method,
+            "result": {"error": f"Error de invocación: {e}"},
+            "tokens_used": 0,
+            "cost_usd": 0.0,
+            "status": "error",
+        }
+
+
+def _build_agent_message(method: str, params: dict[str, Any]) -> str:
+    """Construye el mensaje para enviar al agente basado en method y params.
+
+    Args:
+        method: Nombre del método/tool a invocar
+        params: Parámetros del método
+
+    Returns:
+        Mensaje formateado para el agente
+    """
+    # Formatear parámetros como contexto natural
+    params_str = ", ".join(f"{k}={v}" for k, v in params.items())
+
+    # Mensajes específicos por método de BLAZE
+    method_messages = {
+        "generate_workout": f"Genera un workout con estos parámetros: {params_str}",
+        "calculate_1rm": f"Calcula el 1RM con: {params_str}",
+        "suggest_progression": f"Sugiere progresión con: {params_str}",
+        "design_training_block": f"Diseña un bloque de entrenamiento con: {params_str}",
+    }
+
+    return method_messages.get(
+        method,
+        f"Ejecuta {method} con parámetros: {params_str}"
+    )
 
 
 def build_consensus(
