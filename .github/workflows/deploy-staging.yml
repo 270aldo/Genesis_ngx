@@ -1,0 +1,135 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: ["develop"]
+  workflow_dispatch:
+    inputs:
+      agent:
+        description: "Specific agent to deploy (leave empty for all)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_PROJECT_ID: ngx-genesis-staging
+  GCP_REGION: us-central1
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  # Validate before deploy
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint
+        run: ruff check agents/
+
+      - name: Test
+        run: pytest agents/ -v --cov=agents --cov-fail-under=80 -x
+        env:
+          SUPABASE_URL: "https://test.supabase.co"
+          SUPABASE_ANON_KEY: "test-anon-key"
+          SUPABASE_SERVICE_ROLE_KEY: "test-service-key"
+
+      - name: Validate ADK config
+        run: |
+          python - <<'PY'
+          import yaml
+          with open('adk.yaml') as f:
+              config = yaml.safe_load(f)
+          assert config['version'] == '1.0'
+          assert 'agents' in config
+          assert 'environments' in config
+          print(f"✅ ADK config valid: {len(config['agents'])} agents defined")
+          PY
+
+  # Deploy to Vertex AI Agent Engine (Staging)
+  deploy:
+    name: Deploy to Agent Engine
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install ADK CLI
+        run: |
+          python -m pip install --upgrade pip
+          pip install google-adk
+
+      - name: Deploy agents to staging
+        run: |
+          # Deploy specific agent or all agents
+          if [ -n "${{ inputs.agent }}" ]; then
+            echo "🚀 Deploying agent: ${{ inputs.agent }}"
+            adk deploy ${{ inputs.agent }} --env staging --project ${{ env.GCP_PROJECT_ID }} --region ${{ env.GCP_REGION }}
+          else
+            echo "🚀 Deploying all agents to staging"
+            adk deploy --env staging --project ${{ env.GCP_PROJECT_ID }} --region ${{ env.GCP_REGION }}
+          fi
+
+      - name: Verify deployment
+        run: |
+          echo "📋 Listing deployed agents..."
+          adk list --project ${{ env.GCP_PROJECT_ID }} --region ${{ env.GCP_REGION }}
+
+      - name: Health check
+        run: |
+          # Basic health check for genesis_x (orchestrator)
+          echo "🏥 Running health check..."
+          adk invoke genesis_x --method get_status --project ${{ env.GCP_PROJECT_ID }} --region ${{ env.GCP_REGION }} || true
+
+  # Notify deployment status
+  notify:
+    name: Notify
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Deployment Summary
+        run: |
+          if [ "${{ needs.deploy.result }}" == "success" ]; then
+            echo "✅ Staging deployment successful!"
+            echo "Environment: staging"
+            echo "Project: ${{ env.GCP_PROJECT_ID }}"
+            echo "Region: ${{ env.GCP_REGION }}"
+          else
+            echo "❌ Staging deployment failed"
+            echo "Check the workflow logs for details"
+          fi
