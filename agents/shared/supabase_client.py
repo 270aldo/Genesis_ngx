@@ -274,7 +274,7 @@ class SupabaseClient:
         except Exception as exc:
             error_msg = str(exc).lower()
             if "forbidden" in error_msg:
-                raise SupabaseRLSError(f"Usuario no es dueño de la conversación") from exc
+                raise SupabaseRLSError("Usuario no es dueño de la conversación") from exc
             raise SupabaseError(f"Error agregando mensaje: {exc}") from exc
 
     @retry(

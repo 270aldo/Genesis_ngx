@@ -19,7 +19,6 @@ from enum import Enum
 from typing import Any, AsyncGenerator, Optional
 
 import vertexai
-from google.cloud import aiplatform
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -27,10 +26,8 @@ from tenacity import (
     wait_exponential_jitter,
 )
 from vertexai.generative_models import (
-    Content,
     GenerationConfig,
     GenerativeModel,
-    Part,
 )
 
 from agents.shared.config import GeminiConfig, get_settings
