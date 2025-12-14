@@ -263,7 +263,7 @@ async def orchestrate(
     budget_per_agent = 0.01  # $0.01 por agente
 
     for agent_id in agents_needed:
-        response = invoke_specialist(
+        response = await invoke_specialist(
             agent_id=agent_id,
             method="respond",
             params={
