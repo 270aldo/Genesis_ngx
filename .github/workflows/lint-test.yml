@@ -36,7 +36,7 @@ jobs:
           # Ensure package markers exist
           touch agents/__init__.py
           # Run all agent tests with coverage
-          pytest agents/ -v --cov=agents --cov-report=term-missing --cov-report=xml -x
+          pytest agents/ -v --cov=agents --cov-report=term-missing --cov-report=xml --cov-fail-under=80 -x
         env:
           # Dummy values for CI (tests use mocks)
           SUPABASE_URL: "https://test.supabase.co"

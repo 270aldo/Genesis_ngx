@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Literal
 
 from google.adk.tools import FunctionTool
 
@@ -683,7 +682,7 @@ def create_cycle_plan(
         goal_mods = _get_goal_modifications(goal, phase_name)
 
         # Ajustar por nivel de actividad
-        activity_mods = _get_activity_modifications(activity_level, phase_name)
+        _activity_mods = _get_activity_modifications(activity_level, phase_name)
 
         # Crear plan de días
         daily_plan = _create_daily_plan(
