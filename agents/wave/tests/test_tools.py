@@ -128,7 +128,7 @@ class TestGenerateRecoveryProtocol:
 
     def test_respects_equipment(self):
         """Debe respetar disponibilidad de equipo."""
-        with_equipment = generate_recovery_protocol(
+        _with_equipment = generate_recovery_protocol(  # noqa: F841
             fatigue_level="moderate",
             has_equipment=True,
         )
