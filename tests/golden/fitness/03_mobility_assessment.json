@@ -1,0 +1,31 @@
+{
+  "id": "fitness-003",
+  "name": "Mobility Assessment Request",
+  "description": "User requests help with hip mobility issues",
+  "domain": "fitness",
+  "expected_agents": ["genesis_x", "atlas"],
+  "conversation": [
+    {
+      "role": "user",
+      "content": "I have tight hips and can't squat to depth. Can you help me improve my hip mobility?"
+    },
+    {
+      "role": "assistant",
+      "agent": "atlas",
+      "expected_behavior": {
+        "should_route_to": "atlas",
+        "should_mention": ["hip flexors", "mobility", "stretches", "routine"]
+      },
+      "validation_rules": {
+        "min_response_length": 150,
+        "must_contain_any": ["stretch", "mobility", "hip", "routine", "exercise"],
+        "must_not_contain": ["I cannot", "error"]
+      }
+    }
+  ],
+  "assertions": {
+    "latency_p95_ms": 2000,
+    "cost_max_usd": 0.02
+  },
+  "tags": ["mobility", "flexibility", "atlas", "hips"]
+}

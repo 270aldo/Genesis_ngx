@@ -1,0 +1,30 @@
+{
+  "id": "fitness-002",
+  "name": "1RM Calculation Request",
+  "description": "User wants to calculate their one-rep max from a working set",
+  "domain": "fitness",
+  "expected_agents": ["genesis_x", "blaze"],
+  "conversation": [
+    {
+      "role": "user",
+      "content": "I did 100kg on squat for 5 reps. What's my estimated 1RM?"
+    },
+    {
+      "role": "assistant",
+      "agent": "blaze",
+      "expected_behavior": {
+        "should_use_tool": "calculate_1rm",
+        "should_mention": ["1RM", "formula", "approximately"]
+      },
+      "validation_rules": {
+        "must_contain_any": ["112", "113", "114", "115", "kg"],
+        "must_not_contain": ["I don't know", "error"]
+      }
+    }
+  ],
+  "assertions": {
+    "latency_p95_ms": 2000,
+    "cost_max_usd": 0.02
+  },
+  "tags": ["strength", "1rm", "calculation", "blaze"]
+}

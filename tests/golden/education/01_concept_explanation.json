@@ -1,0 +1,32 @@
+{
+  "id": "education-001",
+  "name": "Concept Explanation - Progressive Overload",
+  "description": "User wants to understand progressive overload",
+  "domain": "education",
+  "expected_agents": ["genesis_x", "logos"],
+  "conversation": [
+    {
+      "role": "user",
+      "content": "Can you explain what progressive overload is and why it's important for muscle building?"
+    },
+    {
+      "role": "assistant",
+      "agent": "logos",
+      "expected_behavior": {
+        "should_route_to": "logos",
+        "should_use_tool": "explain_concept",
+        "should_mention": ["progressive overload", "adaptation", "increase"]
+      },
+      "validation_rules": {
+        "min_response_length": 300,
+        "must_contain_any": ["progressive overload", "adaptation", "increase", "stimulus"],
+        "must_not_contain": ["error", "I don't know"]
+      }
+    }
+  ],
+  "assertions": {
+    "latency_p95_ms": 4000,
+    "cost_max_usd": 0.05
+  },
+  "tags": ["education", "concepts", "logos", "progressive-overload"]
+}

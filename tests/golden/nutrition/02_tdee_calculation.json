@@ -1,0 +1,32 @@
+{
+  "id": "nutrition-002",
+  "name": "TDEE Calculation Request",
+  "description": "User wants to know their daily calorie needs",
+  "domain": "nutrition",
+  "expected_agents": ["genesis_x", "metabol"],
+  "conversation": [
+    {
+      "role": "user",
+      "content": "Calculate my TDEE. I'm 75kg, 175cm, 32 years old female, moderately active with gym 3x per week."
+    },
+    {
+      "role": "assistant",
+      "agent": "metabol",
+      "expected_behavior": {
+        "should_route_to": "metabol",
+        "should_use_tool": "calculate_tdee",
+        "should_mention": ["TDEE", "BMR", "calories", "activity"]
+      },
+      "validation_rules": {
+        "must_contain_any": ["calories", "TDEE", "BMR", "maintenance"],
+        "response_contains_number": true,
+        "must_not_contain": ["error"]
+      }
+    }
+  ],
+  "assertions": {
+    "latency_p95_ms": 2000,
+    "cost_max_usd": 0.02
+  },
+  "tags": ["nutrition", "tdee", "metabolism", "metabol"]
+}
