@@ -199,3 +199,46 @@ def get_request_id(request: Request) -> str:
 
 
 RequestID = Annotated[str, Depends(get_request_id)]
+
+
+# =============================================================================
+# User Rate Limit Dependency
+# =============================================================================
+
+
+async def check_user_rate_limit(
+    request: Request,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> None:
+    """Check if user has exceeded their rate limit.
+
+    This dependency should be used in endpoints that require both
+    authentication and per-user rate limiting.
+
+    Args:
+        request: FastAPI request object (to access app.state.rate_limiter)
+        current_user: Authenticated user from JWT
+
+    Raises:
+        HTTPException: If user rate limit is exceeded
+    """
+    rate_limiter = getattr(request.app.state, "rate_limiter", None)
+
+    if rate_limiter is None:
+        logger.warning("Rate limiter not initialized in app state")
+        return  # Allow request if rate limiter not configured
+
+    response = rate_limiter.check_user_rate_limit(current_user.user_id)
+    if response is not None:
+        # Rate limit exceeded - raise exception with same info
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "error": "rate_limit_exceeded",
+                "message": f"User rate limit exceeded for {current_user.user_id}",
+            },
+            headers={"Retry-After": response.headers.get("Retry-After", "60")},
+        )
+
+
+UserRateLimit = Annotated[None, Depends(check_user_rate_limit)]

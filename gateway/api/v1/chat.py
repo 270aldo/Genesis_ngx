@@ -11,7 +11,7 @@ import logging
 import time
 from typing import AsyncIterator
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import StreamingResponse
 
 from gateway.api.schemas.chat import (
@@ -29,6 +29,7 @@ from gateway.dependencies import (
     CurrentUser,
     RequestID,
     Settings,
+    UserRateLimit,
 )
 from gateway.services.orchestration import OrchestrationService
 from gateway.services.persistence import PersistenceService
@@ -51,6 +52,7 @@ async def chat(
     request_id: RequestID,
     settings: Settings,
     registry: AgentRegistry,
+    _rate_limit: UserRateLimit = None,  # Validates user rate limit
 ) -> ChatResponse:
     """Handle synchronous chat request.
 
@@ -93,6 +95,7 @@ async def chat(
         # Persist agent response
         message_id = await persistence.append_agent_message(
             conversation_id=conversation_id,
+            user_id=current_user.user_id,
             agent_type=result.agent_id,
             content=result.response,
             tokens_used=result.tokens_used,
@@ -106,7 +109,7 @@ async def chat(
             message=MessageResponse(
                 id=message_id,
                 conversation_id=conversation_id,
-                role=MessageRole.ASSISTANT,
+                role=MessageRole.AGENT,
                 content=result.response,
                 agent_type=AgentType(result.agent_id),
                 tokens_used=result.tokens_used,
@@ -139,6 +142,7 @@ async def chat_stream(
     request_id: RequestID,
     settings: Settings,
     registry: AgentRegistry,
+    _rate_limit: UserRateLimit = None,  # Validates user rate limit
 ) -> StreamingResponse:
     """Handle streaming chat request using SSE.
 
@@ -214,6 +218,7 @@ async def chat_stream(
             # Persist agent response
             await persistence.append_agent_message(
                 conversation_id=conversation_id,
+                user_id=current_user.user_id,
                 agent_type=agent_id,
                 content=full_response,
                 tokens_used=tokens_used,

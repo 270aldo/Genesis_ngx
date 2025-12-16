@@ -23,6 +23,7 @@ class Environment(str, Enum):
     DEVELOPMENT = "development"
     STAGING = "staging"
     PRODUCTION = "production"
+    TEST = "test"
 
 
 class LogLevel(str, Enum):

@@ -7,7 +7,6 @@ Read operations use direct table access with RLS filtering.
 from __future__ import annotations
 
 import logging
-import uuid
 from datetime import datetime
 from typing import Any, List, Optional, Tuple
 
@@ -57,12 +56,17 @@ class PersistenceService:
     ) -> str:
         """Create a new conversation.
 
+        Uses user_create_conversation RPC which validates ownership.
+
         Args:
             user_id: Owner user ID
             title: Optional conversation title
 
         Returns:
             New conversation ID
+
+        Raises:
+            RuntimeError: If conversation creation fails
         """
         try:
             result = self.client.rpc(
@@ -73,21 +77,14 @@ class PersistenceService:
                 },
             ).execute()
 
+            if result.data is None:
+                raise RuntimeError("RPC returned no data")
+
             return result.data
 
         except Exception as e:
             logger.error(f"Failed to create conversation: {e}")
-            # Fallback to direct insert for development
-            conversation_id = str(uuid.uuid4())
-            self.client.table("conversations").insert(
-                {
-                    "id": conversation_id,
-                    "user_id": user_id,
-                    "title": title,
-                    "status": "active",
-                }
-            ).execute()
-            return conversation_id
+            raise RuntimeError(f"Failed to create conversation: {e}") from e
 
     async def get_conversation(
         self,
@@ -197,42 +194,43 @@ class PersistenceService:
     ) -> str:
         """Append a user message to a conversation.
 
+        Uses gateway_append_user_message RPC which validates ownership
+        and works with service_role authentication.
+
         Args:
             conversation_id: Conversation ID
-            user_id: User ID
+            user_id: User ID (for ownership validation)
             content: Message content
 
         Returns:
             New message ID
+
+        Raises:
+            RuntimeError: If message append fails
         """
         try:
             result = self.client.rpc(
-                "user_append_message",
+                "gateway_append_user_message",
                 {
                     "p_conversation_id": conversation_id,
+                    "p_user_id": user_id,
                     "p_content": content,
                 },
             ).execute()
+
+            if result.data is None:
+                raise RuntimeError("RPC returned no data")
 
             return result.data
 
         except Exception as e:
             logger.error(f"Failed to append user message: {e}")
-            # Fallback for development
-            message_id = str(uuid.uuid4())
-            self.client.table("messages").insert(
-                {
-                    "id": message_id,
-                    "conversation_id": conversation_id,
-                    "role": "user",
-                    "content": content,
-                }
-            ).execute()
-            return message_id
+            raise RuntimeError(f"Failed to append user message: {e}") from e
 
     async def append_agent_message(
         self,
         conversation_id: str,
+        user_id: str,
         agent_type: str,
         content: str,
         tokens_used: int = 0,
@@ -240,10 +238,13 @@ class PersistenceService:
     ) -> str:
         """Append an agent message to a conversation.
 
-        Uses the agent_append_message RPC which validates agent_role claim.
+        Uses gateway_append_agent_message RPC which validates ownership
+        and works with service_role authentication. Uses role='agent'
+        to comply with messages table constraint.
 
         Args:
             conversation_id: Conversation ID
+            user_id: User ID (for ownership validation)
             agent_type: Agent type (e.g., "genesis_x", "blaze")
             content: Message content
             tokens_used: Tokens consumed
@@ -251,12 +252,16 @@ class PersistenceService:
 
         Returns:
             New message ID
+
+        Raises:
+            RuntimeError: If message append fails
         """
         try:
             result = self.client.rpc(
-                "agent_append_message",
+                "gateway_append_agent_message",
                 {
                     "p_conversation_id": conversation_id,
+                    "p_user_id": user_id,
                     "p_agent_type": agent_type,
                     "p_content": content,
                     "p_tokens_used": tokens_used,
@@ -264,24 +269,14 @@ class PersistenceService:
                 },
             ).execute()
 
+            if result.data is None:
+                raise RuntimeError("RPC returned no data")
+
             return result.data
 
         except Exception as e:
             logger.error(f"Failed to append agent message: {e}")
-            # Fallback for development
-            message_id = str(uuid.uuid4())
-            self.client.table("messages").insert(
-                {
-                    "id": message_id,
-                    "conversation_id": conversation_id,
-                    "role": "assistant",
-                    "agent_type": agent_type,
-                    "content": content,
-                    "tokens_used": tokens_used,
-                    "cost_usd": cost_usd,
-                }
-            ).execute()
-            return message_id
+            raise RuntimeError(f"Failed to append agent message: {e}") from e
 
     async def get_messages(
         self,
@@ -331,18 +326,27 @@ class PersistenceService:
     async def archive_conversation(self, conversation_id: str) -> bool:
         """Archive a conversation (soft delete).
 
+        Uses user_archive_conversation RPC which validates ownership.
+
         Args:
             conversation_id: Conversation ID
 
         Returns:
             True if successful
+
+        Raises:
+            RuntimeError: If archive fails
         """
         try:
-            self.client.table("conversations").update(
-                {"status": "archived"}
-            ).eq("id", conversation_id).execute()
-            return True
+            result = self.client.rpc(
+                "user_archive_conversation",
+                {
+                    "p_conversation_id": conversation_id,
+                },
+            ).execute()
+
+            return result.data is True
 
         except Exception as e:
             logger.error(f"Failed to archive conversation: {e}")
-            return False
+            raise RuntimeError(f"Failed to archive conversation: {e}") from e

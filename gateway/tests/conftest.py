@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import AsyncIterator, Generator
+from typing import Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -70,15 +70,17 @@ def mock_supabase():
     """Mock Supabase client."""
     client = MagicMock()
 
-    # Mock RPC calls
+    # Mock RPC calls - updated to use gateway-specific RPCs
     def mock_rpc(name, params):
         result = MagicMock()
         if name == "user_create_conversation":
             result.data = "conv-123"
-        elif name == "user_append_message":
+        elif name == "gateway_append_user_message":
             result.data = "msg-user-123"
-        elif name == "agent_append_message":
+        elif name == "gateway_append_agent_message":
             result.data = "msg-agent-123"
+        elif name == "user_archive_conversation":
+            result.data = True
         else:
             result.data = None
         result.execute = MagicMock(return_value=result)

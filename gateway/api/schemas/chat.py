@@ -10,10 +10,14 @@ from pydantic import BaseModel, Field
 
 
 class MessageRole(str, Enum):
-    """Message role in conversation."""
+    """Message role in conversation.
+
+    Note: Uses 'agent' instead of 'assistant' to match database constraint
+    and multi-agent architecture pattern.
+    """
 
     USER = "user"
-    ASSISTANT = "assistant"
+    AGENT = "agent"  # Multi-agent pattern (not 'assistant')
     SYSTEM = "system"
 
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
-from typing import List, Optional
+from typing import List
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -120,8 +120,13 @@ class GatewaySettings(BaseSettings):
 
     @property
     def is_development(self) -> bool:
-        """Check if running in development."""
-        return self.environment == "development"
+        """Check if running in development or test."""
+        return self.environment in ("development", "test")
+
+    @property
+    def is_test(self) -> bool:
+        """Check if running in test environment."""
+        return self.environment == "test"
 
 
 @lru_cache

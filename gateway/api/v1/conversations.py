@@ -17,8 +17,7 @@ from gateway.api.schemas.chat import (
     ConversationResponse,
     MessageResponse,
 )
-from gateway.api.schemas.common import PaginatedResponse
-from gateway.dependencies import CurrentUser, RequestID, Settings
+from gateway.dependencies import CurrentUser, Settings
 from gateway.services.persistence import PersistenceService
 
 logger = logging.getLogger(__name__)

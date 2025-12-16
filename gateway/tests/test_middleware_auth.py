@@ -1,11 +1,9 @@
 """Tests for authentication middleware and dependencies."""
 
 import pytest
-import jwt
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock
 
-from gateway.dependencies import get_current_user, AuthenticatedUser
+from gateway.dependencies import AuthenticatedUser
 
 
 class TestAuthenticatedUser:
@@ -112,7 +110,6 @@ class TestBudgetDependency:
 
     def test_default_budget(self, mock_settings):
         """Test default budget is applied."""
-        from gateway.dependencies import get_budget
 
         # Test would require async context
         # For now, just verify the settings

@@ -36,6 +36,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         f"Starting Genesis NGX Gateway (env={settings.environment}, "
         f"debug={settings.debug})"
     )
+
+    # Initialize rate limiter and store in app state for dependency access
+    app.state.rate_limiter = RateLimitMiddleware(
+        app=None,  # Not used as middleware, just for rate checking
+        rate_per_user=settings.rate_limit_per_user,
+        rate_per_ip=settings.rate_limit_per_ip,
+        burst=settings.rate_limit_burst,
+    )
+
     yield
     logger.info("Shutting down Genesis NGX Gateway")
 
@@ -96,11 +105,61 @@ async def health_check() -> dict[str, str]:
     return {"status": "healthy"}
 
 
-@app.get("/ready", tags=["Health"])
-async def readiness_check() -> dict[str, str]:
-    """Readiness probe for Kubernetes/Cloud Run."""
-    # TODO: Add actual readiness checks (DB connection, etc.)
-    return {"status": "ready"}
+@app.get("/ready", tags=["Health"], response_model=None)
+async def readiness_check() -> dict:
+    """Readiness probe for Kubernetes/Cloud Run.
+
+    Checks:
+    - Supabase database connectivity
+    - Agent Engine registry availability
+    """
+    from fastapi import HTTPException, status
+
+    settings = get_settings()
+    checks = {
+        "database": "unknown",
+        "agent_registry": "unknown",
+    }
+    all_ready = True
+
+    # Check Supabase connectivity
+    try:
+        from supabase import create_client
+
+        client = create_client(
+            settings.supabase_url,
+            settings.supabase_service_role_key,
+        )
+        # Simple query to verify connection
+        client.table("conversations").select("id").limit(1).execute()
+        checks["database"] = "ready"
+    except Exception as e:
+        logger.warning(f"Database readiness check failed: {e}")
+        checks["database"] = f"error: {type(e).__name__}"
+        all_ready = False
+
+    # Check Agent Engine registry
+    try:
+        from agents.shared.agent_engine_registry import get_registry
+
+        registry = get_registry()
+        # Verify registry has agents registered
+        if hasattr(registry, "_agents") and len(registry._agents) > 0:
+            checks["agent_registry"] = "ready"
+        else:
+            checks["agent_registry"] = "ready (no agents cached yet)"
+    except Exception as e:
+        logger.warning(f"Agent registry readiness check failed: {e}")
+        checks["agent_registry"] = f"error: {type(e).__name__}"
+        all_ready = False
+
+    if not all_ready:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"status": "not_ready", "checks": checks},
+        )
+
+    return {"status": "ready", "checks": checks}
 
 
 @app.get("/version", tags=["Health"])

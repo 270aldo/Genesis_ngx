@@ -1,6 +1,5 @@
 """Tests for health check endpoints."""
 
-import pytest
 
 
 def test_health_check(client):
@@ -11,10 +10,14 @@ def test_health_check(client):
 
 
 def test_readiness_check(client):
-    """Test /ready endpoint returns ready status."""
+    """Test /ready endpoint returns ready status with checks."""
     response = client.get("/ready")
     assert response.status_code == 200
-    assert response.json() == {"status": "ready"}
+    data = response.json()
+    assert data["status"] == "ready"
+    assert "checks" in data
+    assert data["checks"]["database"] == "ready"
+    assert "agent_registry" in data["checks"]
 
 
 def test_version_info(client):

@@ -1,7 +1,5 @@
 """Tests for chat API endpoints."""
 
-import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
 
 
 class TestChatEndpoint:
