@@ -1,0 +1,176 @@
+# =============================================================================
+# Genesis NGX - SLO Alerting Policies
+# =============================================================================
+# These alerts can be applied via:
+#   gcloud alpha monitoring policies create --policy-from-file=slo-alerts.yaml
+#
+# Or imported into Terraform using google_monitoring_alert_policy resource.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Alert 1: High Error Rate
+# -----------------------------------------------------------------------------
+# Triggers when error rate exceeds 5% over 5 minutes
+# Severity: Critical
+# -----------------------------------------------------------------------------
+displayName: "Genesis NGX - High Error Rate"
+documentation:
+  content: |
+    ## High Error Rate Alert
+
+    Error rate has exceeded 5% threshold.
+
+    ### Immediate Actions
+    1. Check Cloud Logging for error details
+    2. Verify Agent Engine health in GCP Console
+    3. Check Supabase status
+    4. See runbook: docs/runbooks/agent-unavailable.md
+
+    ### Escalation
+    If not resolved in 15 minutes, escalate to on-call.
+  mimeType: text/markdown
+conditions:
+  - displayName: "Error rate > 5%"
+    conditionThreshold:
+      filter: |
+        resource.type="aiplatform.googleapis.com/ReasoningEngine"
+        AND metric.type="aiplatform.googleapis.com/reasoning_engine/request_count"
+        AND metric.labels.response_code!="200"
+      aggregations:
+        - alignmentPeriod: 300s
+          perSeriesAligner: ALIGN_RATE
+          crossSeriesReducer: REDUCE_SUM
+      comparison: COMPARISON_GT
+      thresholdValue: 0.05
+      duration: 300s
+combiner: OR
+notificationChannels: []  # Add your notification channel IDs
+alertStrategy:
+  autoClose: 1800s  # Auto-close after 30 minutes if resolved
+
+---
+# -----------------------------------------------------------------------------
+# Alert 2: High Latency (P95)
+# -----------------------------------------------------------------------------
+# Triggers when p95 latency exceeds 6 seconds (Pro model SLO)
+# Severity: Warning
+# -----------------------------------------------------------------------------
+displayName: "Genesis NGX - High Latency P95"
+documentation:
+  content: |
+    ## High Latency Alert
+
+    P95 latency has exceeded 6 second threshold.
+
+    ### Immediate Actions
+    1. Check if specific agent is slow (GENESIS_X, LOGOS use Pro model)
+    2. Check Vertex AI status page
+    3. Review recent deployments
+    4. See runbook: docs/runbooks/latency-spike.md
+
+    ### Context
+    - Pro models (GENESIS_X, LOGOS): SLO ≤6s
+    - Flash models: SLO ≤2s
+  mimeType: text/markdown
+conditions:
+  - displayName: "P95 latency > 6s"
+    conditionThreshold:
+      filter: |
+        resource.type="aiplatform.googleapis.com/ReasoningEngine"
+        AND metric.type="aiplatform.googleapis.com/reasoning_engine/latencies"
+      aggregations:
+        - alignmentPeriod: 300s
+          perSeriesAligner: ALIGN_PERCENTILE_95
+          crossSeriesReducer: REDUCE_MEAN
+      comparison: COMPARISON_GT
+      thresholdValue: 6000  # 6 seconds in milliseconds
+      duration: 300s
+combiner: OR
+notificationChannels: []
+alertStrategy:
+  autoClose: 1800s
+
+---
+# -----------------------------------------------------------------------------
+# Alert 3: Budget Spike
+# -----------------------------------------------------------------------------
+# Triggers when hourly cost exceeds $5 (unusual for ~100 users)
+# Severity: Warning
+# -----------------------------------------------------------------------------
+displayName: "Genesis NGX - Budget Spike"
+documentation:
+  content: |
+    ## Budget Spike Alert
+
+    Hourly costs have exceeded expected threshold.
+
+    ### Immediate Actions
+    1. Check for unusual traffic patterns
+    2. Verify no infinite loops in agent orchestration
+    3. Check for potential abuse/DDoS
+    4. See runbook: docs/runbooks/cost-spike.md
+
+    ### Expected Costs (Q1)
+    - ~100 users: $20-50/month
+    - Hourly average: ~$0.03-0.07
+    - Alert threshold: $5/hour (anomaly)
+  mimeType: text/markdown
+conditions:
+  - displayName: "Hourly cost > $5"
+    conditionThreshold:
+      filter: |
+        resource.type="aiplatform.googleapis.com/ReasoningEngine"
+        AND metric.type="aiplatform.googleapis.com/reasoning_engine/token_count"
+      aggregations:
+        - alignmentPeriod: 3600s  # 1 hour
+          perSeriesAligner: ALIGN_SUM
+          crossSeriesReducer: REDUCE_SUM
+      # Approximate: 1M tokens ≈ $1.25 for Pro, $0.30 for Flash
+      # $5 ≈ 4M Pro tokens or 16M Flash tokens
+      comparison: COMPARISON_GT
+      thresholdValue: 4000000  # tokens (conservative estimate)
+      duration: 0s
+combiner: OR
+notificationChannels: []
+alertStrategy:
+  autoClose: 3600s
+
+---
+# -----------------------------------------------------------------------------
+# Alert 4: Agent Unavailable
+# -----------------------------------------------------------------------------
+# Triggers when an agent has 0 successful requests for 10 minutes
+# Severity: Critical
+# -----------------------------------------------------------------------------
+displayName: "Genesis NGX - Agent Unavailable"
+documentation:
+  content: |
+    ## Agent Unavailable Alert
+
+    No successful agent invocations in the last 10 minutes.
+
+    ### Immediate Actions
+    1. Check Agent Engine status in GCP Console
+    2. Verify service account permissions
+    3. Check for deployment issues
+    4. See runbook: docs/runbooks/agent-unavailable.md
+
+    ### Recovery
+    If agent is down, may need to redeploy via `adk deploy`.
+  mimeType: text/markdown
+conditions:
+  - displayName: "No successful requests in 10 min"
+    conditionAbsent:
+      filter: |
+        resource.type="aiplatform.googleapis.com/ReasoningEngine"
+        AND metric.type="aiplatform.googleapis.com/reasoning_engine/request_count"
+        AND metric.labels.response_code="200"
+      aggregations:
+        - alignmentPeriod: 600s
+          perSeriesAligner: ALIGN_COUNT
+          crossSeriesReducer: REDUCE_SUM
+      duration: 600s
+combiner: OR
+notificationChannels: []
+alertStrategy:
+  autoClose: 1800s
