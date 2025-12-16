@@ -425,16 +425,16 @@ class TestConceptsDatabaseIntegrity:
     def test_concepts_cover_all_domains(self):
         """Debe haber conceptos de todos los dominios."""
         domains = set(data["domain"] for data in CONCEPTS_DATABASE.values())
-        expected_domains = {"fitness", "nutrition", "behavior", "recovery", "womens_health"}
+        expected_domains = {"fitness", "nutrition", "behavior", "recovery", "womens_health", "mobility", "analytics"}
         assert domains == expected_domains
 
-    def test_concept_count_is_minimum_20(self):
-        """Debe haber al menos 20 conceptos (MVP)."""
-        assert len(CONCEPTS_DATABASE) >= 20
+    def test_concept_count_is_minimum_33(self):
+        """Debe haber al menos 33 conceptos (expanded)."""
+        assert len(CONCEPTS_DATABASE) >= 33
 
     def test_concepts_have_valid_domains(self):
         """Los dominios deben ser válidos."""
-        valid_domains = {"fitness", "nutrition", "behavior", "recovery", "womens_health"}
+        valid_domains = {"fitness", "nutrition", "behavior", "recovery", "womens_health", "mobility", "analytics"}
         for key, data in CONCEPTS_DATABASE.items():
             assert data["domain"] in valid_domains, f"Concepto {key} tiene dominio inválido"
 
@@ -460,9 +460,9 @@ class TestEvidenceDatabaseIntegrity:
         for key, data in EVIDENCE_DATABASE.items():
             assert data["evidence_grade"] in valid_grades, f"Evidencia {key} tiene grado inválido"
 
-    def test_evidence_count_is_minimum_10(self):
-        """Debe haber al menos 10 items de evidencia (MVP)."""
-        assert len(EVIDENCE_DATABASE) >= 10
+    def test_evidence_count_is_minimum_14(self):
+        """Debe haber al menos 14 items de evidencia (expanded)."""
+        assert len(EVIDENCE_DATABASE) >= 14
 
     def test_evidence_has_practical_takeaway(self):
         """La evidencia debe tener aplicación práctica."""
@@ -551,6 +551,22 @@ class TestQuizTopicsIntegrity:
         """Debe tener topic de cambio de comportamiento."""
         assert "behavior_change" in QUIZ_TOPICS
 
+    def test_has_mobility_fundamentals(self):
+        """Debe tener topic de fundamentos de movilidad."""
+        assert "mobility_fundamentals" in QUIZ_TOPICS
+
+    def test_has_analytics_essentials(self):
+        """Debe tener topic de esenciales de analytics."""
+        assert "analytics_essentials" in QUIZ_TOPICS
+
+    def test_has_nutrition_advanced(self):
+        """Debe tener topic de nutrición avanzada."""
+        assert "nutrition_advanced" in QUIZ_TOPICS
+
+    def test_has_womens_health_advanced(self):
+        """Debe tener topic de salud femenina avanzada."""
+        assert "womens_health_advanced" in QUIZ_TOPICS
+
     def test_topics_reference_valid_concepts(self):
         """Los topics deben referenciar conceptos válidos."""
         for topic, concepts in QUIZ_TOPICS.items():
@@ -623,6 +639,8 @@ class TestEnums:
         assert Domain.BEHAVIOR == "behavior"
         assert Domain.RECOVERY == "recovery"
         assert Domain.WOMENS_HEALTH == "womens_health"
+        assert Domain.MOBILITY == "mobility"
+        assert Domain.ANALYTICS == "analytics"
 
     def test_learning_level_enum(self):
         """LearningLevel enum debe tener todos los valores."""

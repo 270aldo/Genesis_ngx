@@ -263,7 +263,7 @@ async def orchestrate(
     budget_per_agent = 0.01  # $0.01 por agente
 
     for agent_id in agents_needed:
-        response = invoke_specialist(
+        response = await invoke_specialist(
             agent_id=agent_id,
             method="respond",
             params={
@@ -278,8 +278,8 @@ async def orchestrate(
         total_cost += response.get("cost_usd", 0)
         total_tokens += response.get("tokens_used", 0)
 
-    # 6. Construir consenso
-    consensus = build_consensus(
+    # 6. Construir consenso (async con Gemini Pro)
+    consensus = await build_consensus(
         agent_responses=agent_responses,
         user_message=message,
         user_context=context,

@@ -9,9 +9,9 @@ import pytest
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_environment() -> Generator[None, None, None]:
     """Configura el entorno de testing."""
-    # Forzar modo test
+    # Forzar modo test - use "test" for both agents and gateway
     os.environ["TEST_MODE"] = "true"
-    os.environ["ENVIRONMENT"] = "development"
+    os.environ["ENVIRONMENT"] = "test"
     os.environ["DEBUG"] = "true"
 
     # Deshabilitar servicios externos por defecto
@@ -21,9 +21,12 @@ def setup_test_environment() -> Generator[None, None, None]:
     # Configurar variables mínimas requeridas
     os.environ.setdefault("GOOGLE_CLOUD_PROJECT", "test-project")
     os.environ.setdefault("GEMINI_PROJECT_ID", "test-project")
-    os.environ.setdefault("SUPABASE_URL", "http://localhost:54321")
+    os.environ.setdefault("SUPABASE_URL", "https://test.supabase.co")
     os.environ.setdefault("SUPABASE_ANON_KEY", "test-anon-key")
     os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "test-service-role-key")
+
+    # Gateway-specific variables
+    os.environ.setdefault("SUPABASE_JWT_SECRET", "test-jwt-secret-at-least-32-chars-long")
     os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-at-least-32-chars-long-for-security")
 
     # Logging silencioso en tests

@@ -1,0 +1,32 @@
+{
+  "id": "fitness-001",
+  "name": "Strength Training Program Request",
+  "description": "User requests a hypertrophy-focused strength program",
+  "domain": "fitness",
+  "expected_agents": ["genesis_x", "blaze"],
+  "conversation": [
+    {
+      "role": "user",
+      "content": "I want to build muscle mass. I can train 4 days per week and have access to a full gym. I'm intermediate level with 2 years of experience."
+    },
+    {
+      "role": "assistant",
+      "agent": "genesis_x",
+      "expected_behavior": {
+        "should_route_to": "blaze",
+        "should_mention": ["hypertrophy", "4-day split", "intermediate"]
+      },
+      "validation_rules": {
+        "min_response_length": 200,
+        "must_contain_any": ["BLAZE", "strength", "program", "workout"],
+        "must_not_contain": ["I don't know", "I cannot", "error"]
+      }
+    }
+  ],
+  "assertions": {
+    "latency_p95_ms": 3000,
+    "cost_max_usd": 0.05,
+    "response_contains_structure": true
+  },
+  "tags": ["strength", "hypertrophy", "blaze", "intermediate"]
+}

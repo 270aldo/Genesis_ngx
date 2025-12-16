@@ -6,36 +6,58 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Genesis NGX is a multi-agent wellness system using Google's ADK (Agent Development Kit), Gemini 2.5 models, and Supabase as the single source of truth.
 
-**Project Status: v1.0.0 - All 13 agents implemented (1045+ tests, 89% coverage)**
+**Project Status: v1.0.0 - Production Ready (México) | 1104+ tests, 89% coverage**
 
 ### System Architecture
 
 ```
-                    ┌─────────────────────────────────┐
-                    │          GENESIS_X              │
-                    │       (Orchestrator - Pro)      │
-                    └───────────────┬─────────────────┘
-                                    │
-        ┌───────────────────────────┼───────────────────────────┐
-        │                           │                           │
-┌───────▼───────┐          ┌────────▼────────┐         ┌───────▼───────┐
-│    FITNESS    │          │   NUTRITION     │         │    OTHER      │
-│               │          │                 │         │               │
-│ BLAZE: Fuerza │          │ SAGE: Strategy  │         │ SPARK: Habits │
-│ ATLAS: Movil. │          │ METABOL: TDEE   │         │ STELLA: Data  │
-│ TEMPO: Cardio │          │ MACRO: Macros   │         │ LUNA: Women   │
-│ WAVE: Recov.  │          │ NOVA: Supps     │         │ LOGOS: Educ.  │
-└───────────────┘          └─────────────────┘         └───────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                         CLIENTS                                      │
+│                  Expo Mobile / Next.js Web                          │
+└─────────────────────────────┬───────────────────────────────────────┘
+                              │ HTTPS + JWT
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    GATEWAY (FastAPI - Cloud Run)                    │
+│  Auth JWT │ Rate Limit │ Budget │ Logging │ Orchestration           │
+└─────────────────────────────┬───────────────────────────────────────┘
+                              │ A2A Protocol
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│              VERTEX AI AGENT ENGINE (13 Agents)                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                    ┌─────────────────────────────────┐              │
+│                    │          GENESIS_X              │              │
+│                    │       (Orchestrator - Pro)      │              │
+│                    └───────────────┬─────────────────┘              │
+│                                    │                                │
+│        ┌───────────────────────────┼───────────────────────────┐    │
+│        │                           │                           │    │
+│ ┌──────▼──────┐          ┌────────▼────────┐         ┌───────▼───┐ │
+│ │   FITNESS   │          │   NUTRITION     │         │   OTHER   │ │
+│ │ BLAZE/ATLAS │          │ SAGE/METABOL    │         │ SPARK     │ │
+│ │ TEMPO/WAVE  │          │ MACRO/NOVA      │         │ STELLA    │ │
+│ └─────────────┘          └─────────────────┘         │ LUNA/LOGOS│ │
+│                                                       └───────────┘ │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    SUPABASE (PostgreSQL + RLS)                      │
+│           Tiered Health Data | Consent System | RPC APIs            │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Key Components
 
+- **Gateway**: FastAPI BFF (Backend for Frontend) on Cloud Run - auth, rate limiting, budget
 - **GENESIS_X**: Main orchestrator (Gemini 2.5 Pro) - routes requests to specialists
 - **LOGOS**: Education specialist (Gemini 2.5 Pro) - explains concepts, debunks myths
 - **11 Flash Specialists**: Domain-specific agents using Gemini 2.5 Flash
 - **Framework**: Google ADK (Agent Development Kit) with native agent definitions
 - **Protocol**: A2A (Agent-to-Agent) v0.3 using JSON-RPC 2.0 over HTTPS with SSE streaming
 - **Data**: Supabase PostgreSQL with pgvector for embeddings and RLS for security
+- **Compliance**: LFPDPPP (Mexico) with tiered consent system for health data
 
 ## Development Environment Setup
 
@@ -63,10 +85,15 @@ adk web
 # Run all agent tests
 pytest agents/ -v
 
+# Run gateway tests
+pytest gateway/tests/ -v
+
+# Run contract tests
+pytest tests/contract/ -v
+
 # Run specific agent tests
 pytest agents/genesis_x/tests/ -v
-pytest agents/blaze/tests/ -v
-pytest agents/sage/tests/ -v
+pytest agents/logos/tests/ -v
 
 # With coverage
 pytest --cov=agents --cov-report=html
@@ -88,15 +115,44 @@ supabase db lint
 ## Code Quality Commands
 
 ```bash
-# Linting Python code
-ruff check agents/
+# Linting Python code (agents + gateway)
+ruff check agents/ gateway/
 
 # Format Python code
-ruff format agents/
+ruff format agents/ gateway/
 
 # Fix linting issues
-ruff check --fix agents/
+ruff check --fix agents/ gateway/
 ```
+
+## Gateway API
+
+The Gateway is a FastAPI BFF (Backend for Frontend) that handles auth, rate limiting, and orchestration.
+
+### Running Gateway
+
+```bash
+cd gateway
+uvicorn main:app --reload --port 8080
+```
+
+### Endpoints
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/v1/chat` | POST | JWT | Chat request/response |
+| `/v1/chat/stream` | POST | JWT | SSE streaming |
+| `/v1/conversations` | GET | JWT | List user conversations |
+| `/v1/conversations/{id}` | GET | JWT | Get conversation |
+| `/health` | GET | No | Health check |
+| `/ready` | GET | No | Readiness probe |
+
+### Middleware Stack
+
+1. **RequestIDMiddleware**: Generates/propagates X-Request-ID
+2. **CORSMiddleware**: Handles CORS for web clients
+3. **StructuredLoggingMiddleware**: JSON structured logging
+4. **RateLimitMiddleware**: 60 req/min per user, 100 req/min per IP
 
 ## Architecture Key Points
 
@@ -178,7 +234,7 @@ logos = Agent(
 )
 ```
 
-MVP databases: 20 concepts, 15 myths, 10 evidences across 5 domains
+Expanded databases: 33 concepts, 15 myths, 14 evidences across 7 domains (fitness, nutrition, behavior, recovery, womens_health, mobility, analytics)
 
 ### Database Security Pattern
 
@@ -294,11 +350,12 @@ Before making architectural changes, consult existing ADRs in `ADR/`:
 - **004**: Gemini model selection strategy (Pro/Flash/Flash-Lite criteria)
 - **005**: Security and compliance (wellness scope, no PHI in MVP)
 - **006**: Decision not to use ADK Visual Builder
-- **007**: Migration to ADK/Agent Engine (CURRENT)
+- **007**: Migration to ADK/Agent Engine
+- **008**: Production Decisions Mexico (LFPDPPP, data tiers, Gateway) **CURRENT**
 
 ## Testing Strategy
 
-**Current Status: 1045+ tests, 89% coverage**
+**Current Status: 1104+ tests, 89% coverage**
 
 Target: ≥80% coverage for agent code.
 
@@ -349,3 +406,38 @@ To add concepts, myths, or evidence to LOGOS databases:
 2. Add to appropriate database (CONCEPTS_DATABASE, MYTHS_DATABASE, EVIDENCE_DATABASE)
 3. Run tests: `pytest agents/logos/tests/ -v`
 4. Ensure cross-domain coverage is maintained
+
+## Compliance (LFPDPPP - Mexico)
+
+Health data is organized in tiers for LFPDPPP compliance:
+
+### Data Tiers
+
+| Tier | Metrics | Consent Required |
+|------|---------|------------------|
+| **Tier 1** | weight_kg, height_cm, steps_daily, active_minutes, calories_burned, water_ml, sleep_hours | Privacy Policy only |
+| **Tier 2** | body_fat_percentage, muscle_mass_kg, resting_hr_bpm, sleep_quality_score | Checkbox adicional |
+| **Tier 3** | blood_glucose, blood_pressure, hrv, menstrual_cycle | Excluido v1 (requiere consulta legal) |
+
+### Consent RPCs
+
+```python
+# Grant consent
+supabase.rpc('grant_consent', {
+    'p_consent_type': 'tier2_health_data',
+    'p_consent_version': 'v1.0',
+    'p_ip_address': user_ip,
+    'p_user_agent': user_agent
+})
+
+# Revoke consent
+supabase.rpc('revoke_consent', {
+    'p_consent_type': 'tier2_health_data'
+})
+```
+
+### Key Files
+
+- `supabase/migrations/002_health_metrics_tiers.sql`: Tier system implementation
+- `docs/compliance/backend-verification.md`: Compliance checklist
+- `docs/runbooks/data-incident.md`: LFPDPPP breach response (72h timeline)

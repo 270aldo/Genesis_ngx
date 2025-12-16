@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 import sys
-from typing import Any, Callable
+from typing import Any
 
 import structlog
 from google.cloud import logging as cloud_logging

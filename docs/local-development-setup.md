@@ -2,6 +2,8 @@
 
 Esta guia te llevara paso a paso por el proceso de configurar Genesis NGX en tu maquina local para desarrollo.
 
+> **Actualizado**: 2025-12-15 | **Version**: 1.0.0
+
 ## Requisitos Previos
 
 ### Software Requerido
@@ -32,6 +34,12 @@ Esta guia te llevara paso a paso por el proceso de configurar Genesis NGX en tu 
    brew install supabase/tap/supabase  # macOS
    # o
    npm install -g supabase
+   ```
+
+6. **Terraform** (opcional, para infraestructura)
+   ```bash
+   brew install terraform  # macOS
+   terraform --version
    ```
 
 ### Cuentas Requeridas
@@ -172,31 +180,59 @@ supabase status
 
 ```
 Genesis_ngx/
-├── agents/
-│   ├── genesis_x/      # Orquestador principal
-│   │   ├── agent.py    # Definicion ADK
-│   │   ├── tools.py    # FunctionTools
-│   │   ├── prompts.py  # System prompts
-│   │   └── tests/
-│   │
-│   ├── blaze/          # Fuerza/hipertrofia
-│   ├── sage/           # Nutricion
-│   └── shared/         # Codigo compartido
+├── agents/                 # 13 Agentes ADK
+│   ├── genesis_x/          # Orquestador (Pro)
+│   ├── blaze/              # Fuerza (Flash)
+│   ├── logos/              # Educacion (Pro)
+│   └── shared/             # Codigo compartido
 │
-├── adk.yaml            # Configuracion ADK
-├── requirements.txt    # Dependencias Python
-└── pytest.ini         # Configuracion tests
+├── gateway/                # FastAPI BFF
+│   ├── api/v1/             # REST endpoints
+│   ├── middleware/         # Auth, Rate Limit
+│   ├── services/           # Orchestration
+│   └── tests/
+│
+├── terraform/              # Infraestructura
+├── schemas/                # Contract testing
+├── tests/                  # Golden paths
+├── monitoring/             # Alertas
+├── supabase/migrations/    # SQL
+├── docs/                   # Documentacion
+│
+├── adk.yaml                # Configuracion ADK
+└── requirements.txt        # Dependencias Python
 ```
+
+## 10. Ejecutar Gateway (FastAPI)
+
+El Gateway es el BFF que conecta clientes con los agentes.
+
+```bash
+# Entrar al directorio
+cd gateway
+
+# Ejecutar en modo desarrollo
+uvicorn main:app --reload --port 8080
+
+# Ejecutar tests del gateway
+pytest tests/ -v
+```
+
+El Gateway estara disponible en `http://localhost:8080`:
+- `GET /health` - Health check
+- `GET /ready` - Readiness probe
+- `POST /v1/chat` - Chat endpoint (requiere JWT)
 
 ## Comandos Utiles
 
 | Comando | Descripcion |
 |---------|-------------|
-| `adk web` | Playground local |
+| `adk web` | Playground local (agentes) |
 | `adk run <agent>` | Ejecutar agente |
-| `adk deploy --env staging` | Deploy a staging |
-| `pytest agents/` | Ejecutar tests |
-| `ruff check agents/` | Linting |
+| `uvicorn gateway.main:app --reload` | Gateway local |
+| `pytest agents/` | Tests de agentes |
+| `pytest gateway/tests/` | Tests del gateway |
+| `ruff check agents/ gateway/` | Linting |
 
 ## Troubleshooting
 

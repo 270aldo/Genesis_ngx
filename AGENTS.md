@@ -1,9 +1,9 @@
 # AGENTS.md - Guía para Agentes Codificadores
 
-> **Última actualización**: 2025-11-27
+> **Última actualización**: 2025-12-15
 > **Runtime**: Vertex AI Agent Engine (ADK)
 > **Documento maestro**: [GENESIS_PRD.md](./GENESIS_PRD.md)
-> **Estado del proyecto**: v1.0.0 - Todos los agentes implementados
+> **Estado del proyecto**: v1.0.0 - Production Ready (México)
 
 ---
 
@@ -24,43 +24,55 @@ Lee [ADR-007](./ADR/007-agent-engine-migration.md) para el contexto completo.
 
 ```
 Genesis_ngx/
-├── agents/
-│   ├── genesis_x/          # Orquestador principal
+├── agents/                     # 13 Agentes ADK
+│   ├── genesis_x/              # Orquestador principal (Pro)
 │   │   ├── __init__.py
-│   │   ├── agent.py        # Definición ADK
-│   │   ├── tools.py        # FunctionTools
-│   │   ├── prompts.py      # System prompts
+│   │   ├── agent.py            # Definición ADK
+│   │   ├── tools.py            # FunctionTools
+│   │   ├── prompts.py          # System prompts
 │   │   └── tests/
-│   │
-│   ├── blaze/              # Entrenamiento fuerza
-│   ├── atlas/              # Movilidad
-│   ├── tempo/              # Cardio
-│   ├── wave/               # Recuperación
-│   ├── sage/               # Nutrición estratégica
-│   ├── metabol/            # Metabolismo
-│   ├── macro/              # Macronutrientes
-│   ├── nova/               # Suplementación
-│   ├── spark/              # Conducta
-│   ├── stella/             # Analytics
-│   ├── luna/               # Salud femenina
-│   ├── logos/              # Educación
-│   │
-│   └── shared/             # Utilidades compartidas
+│   ├── blaze/                  # Fuerza (Flash)
+│   ├── atlas/                  # Movilidad (Flash)
+│   ├── tempo/                  # Cardio (Flash)
+│   ├── wave/                   # Recuperación (Flash)
+│   ├── sage/                   # Nutrición (Flash)
+│   ├── metabol/                # Metabolismo (Flash)
+│   ├── macro/                  # Macros (Flash)
+│   ├── nova/                   # Suplementos (Flash)
+│   ├── spark/                  # Conducta (Flash)
+│   ├── stella/                 # Analytics (Flash)
+│   ├── luna/                   # Salud femenina (Flash)
+│   ├── logos/                  # Educación (Pro) ⭐
+│   └── shared/                 # Utilidades compartidas
 │       ├── supabase_client.py
 │       ├── cost_calculator.py
-│       └── types.py
+│       ├── security.py
+│       ├── config.py
+│       └── agent_engine_registry.py
 │
-├── supabase/
-│   └── migrations/
+├── gateway/                    # FastAPI BFF (Cloud Run)
+│   ├── api/v1/                 # REST endpoints
+│   ├── middleware/             # Auth, Rate Limit, Logging
+│   ├── services/               # Orchestration, Persistence
+│   └── tests/
 │
-├── ADR/
-├── docs/
-├── adk.yaml                # Configuración ADK
-├── pyproject.toml
-├── GENESIS_PRD.md          # 📖 FUENTE DE VERDAD
+├── terraform/                  # Infraestructura
+│   └── modules/                # WIF, Service Accounts
+│
+├── schemas/                    # Contract testing
+├── tests/                      # Golden paths
+├── monitoring/                 # Alerts
+├── supabase/migrations/        # SQL migrations
+├── docs/                       # Documentation
+│   ├── compliance/             # LFPDPPP verification
+│   ├── legal/                  # Privacy policy
+│   └── runbooks/               # Incident response
+│
+├── ADR/                        # Architecture Decision Records
+├── adk.yaml                    # Configuración ADK
+├── GENESIS_PRD.md              # 📖 FUENTE DE VERDAD
 ├── CLAUDE.md
-├── GEMINI.md
-└── AGENTS.md               # Este archivo
+└── AGENTS.md                   # Este archivo
 ```
 
 ---
@@ -88,11 +100,11 @@ Genesis_ngx/
 ### Modelos por Agente
 
 ```yaml
-gemini-3-pro:       # Reasoning complejo
+gemini-2.5-pro:     # Reasoning complejo (≤6s latency)
   - genesis_x       # Orquestación multi-agente
   - logos           # Educación profunda
 
-gemini-3-flash:     # Respuesta rápida
+gemini-2.5-flash:   # Respuesta rápida (≤2s latency)
   - blaze, atlas, tempo, wave
   - sage, metabol, macro, nova
   - spark, stella, luna
@@ -116,7 +128,7 @@ gemini-3-flash:     # Respuesta rápida
 | LUNA | 120 | 83% | #6 | 2025-11-26 |
 | **LOGOS** | **140** | **89%** | **#7** | **2025-11-27** |
 
-**Totales**: 1045+ tests, 89% coverage promedio
+**Totales**: 1104+ tests, 89% coverage promedio
 
 ### LOGOS - El Educador (Pro Model)
 
@@ -145,11 +157,12 @@ LOGOS es el **único agente especialista** que usa Gemini 2.5 Pro debido a:
 
 #### Bases de Datos MVP
 
-- **20 conceptos**: fitness, nutrition, behavior, recovery, womens_health
-- **15 mitos**: 3 por dominio
-- **10 evidencias**: Con estudios y grados
+- **33 conceptos**: fitness, nutrition, behavior, recovery, womens_health, mobility, analytics
+- **15 mitos**: 3 por dominio principal
+- **14 evidencias**: Con estudios y grados (A/B/C/D)
 - **4 tipos de quiz**: multiple_choice, true_false, fill_blank, scenario
 - **3 niveles**: beginner, intermediate, advanced
+- **7 dominios**: fitness, nutrition, behavior, recovery, womens_health, mobility, analytics
 
 ---
 
@@ -246,7 +259,7 @@ from .prompts import BLAZE_SYSTEM_PROMPT
 # Definir el agente
 blaze = Agent(
     name="blaze",
-    model="gemini-3-flash",
+    model="gemini-2.5-flash",  # Flash para especialistas, Pro para GENESIS_X/LOGOS
     description="Agente especializado en entrenamiento de fuerza e hipertrofia",
     instruction=BLAZE_SYSTEM_PROMPT,
     tools=[
@@ -555,4 +568,4 @@ Si tienes dudas durante el desarrollo:
 
 ---
 
-*Este documento se actualiza conforme evoluciona el proyecto. Última revisión: 2025-11-27*
+*Este documento se actualiza conforme evoluciona el proyecto. Última revisión: 2025-12-15*

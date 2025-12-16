@@ -1,0 +1,258 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: ["main"]
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      agent:
+        description: "Specific agent to deploy (leave empty for all)"
+        required: false
+        type: string
+      skip_approval:
+        description: "Skip manual approval (emergency only)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_PROJECT_ID: ngx-genesis-prod
+  GCP_REGION: us-central1
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  # Validate before deploy
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint
+        run: ruff check agents/
+
+      - name: Test
+        run: pytest agents/ -v --cov=agents --cov-fail-under=80 -x
+        env:
+          SUPABASE_URL: "https://test.supabase.co"
+          SUPABASE_ANON_KEY: "test-anon-key"
+          SUPABASE_SERVICE_ROLE_KEY: "test-service-key"
+
+      - name: Validate ADK config
+        run: |
+          python - <<'PY'
+          import yaml
+          with open('adk.yaml') as f:
+              config = yaml.safe_load(f)
+          assert config['version'] == '1.0'
+          assert 'production' in config.get('environments', {})
+          print(f"✅ ADK config valid for production deployment")
+          PY
+
+  # Security scan before production
+  security:
+    name: Security Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install security tools
+        run: pip install pip-audit bandit[toml]
+
+      - name: Check dependencies for vulnerabilities
+        run: pip-audit --requirement requirements.txt --desc on
+
+      - name: Run bandit security scan
+        run: bandit -r agents/ -ll -ii
+
+  # Manual approval gate (production environment protection)
+  approval:
+    name: Production Approval
+    needs: [validate, security]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Approval confirmed
+        run: |
+          echo "✅ Production deployment approved"
+          echo "Approver: ${{ github.actor }}"
+          echo "Commit: ${{ github.sha }}"
+
+  # Deploy to Vertex AI Agent Engine (Production)
+  deploy:
+    name: Deploy to Agent Engine
+    needs: approval
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install ADK CLI
+        run: |
+          python -m pip install --upgrade pip
+          pip install google-adk
+
+      - name: Deploy agents to production
+        run: |
+          # Deploy specific agent or all agents
+          if [ -n "${{ inputs.agent }}" ]; then
+            echo "🚀 Deploying agent: ${{ inputs.agent }}"
+            adk deploy ${{ inputs.agent }} --env production --project ${{ env.GCP_PROJECT_ID }} --region ${{ env.GCP_REGION }}
+          else
+            echo "🚀 Deploying all agents to production"
+            adk deploy --env production --project ${{ env.GCP_PROJECT_ID }} --region ${{ env.GCP_REGION }}
+          fi
+
+      - name: Verify deployment
+        run: |
+          echo "📋 Listing deployed agents..."
+          adk list --project ${{ env.GCP_PROJECT_ID }} --region ${{ env.GCP_REGION }}
+
+      - name: Health check
+        run: |
+          echo "🏥 Running health check..."
+          adk invoke genesis_x --method get_status --project ${{ env.GCP_PROJECT_ID }} --region ${{ env.GCP_REGION }}
+
+  # Smoke tests after deployment
+  smoke-tests:
+    name: Smoke Tests
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install ADK CLI
+        run: pip install google-adk
+
+      - name: Run smoke tests
+        run: |
+          echo "🔥 Running smoke tests..."
+
+          # Test GENESIS_X orchestrator status
+          echo "Testing genesis_x.get_status..."
+          adk invoke genesis_x --method get_status \
+            --project ${{ env.GCP_PROJECT_ID }} \
+            --region ${{ env.GCP_REGION }}
+
+          # Test intent classification
+          echo "Testing genesis_x.classify_intent..."
+          adk invoke genesis_x --method classify_intent \
+            --params '{"message": "¿Cómo puedo ganar masa muscular?"}' \
+            --project ${{ env.GCP_PROJECT_ID }} \
+            --region ${{ env.GCP_REGION }}
+
+          echo "✅ Smoke tests passed"
+
+  # Create release tag if deploying from tag
+  release:
+    name: Create Release
+    needs: smoke-tests
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          generate_release_notes: true
+          body: |
+            ## 🚀 Production Deployment
+
+            This release has been deployed to production:
+            - **Project:** ${{ env.GCP_PROJECT_ID }}
+            - **Region:** ${{ env.GCP_REGION }}
+            - **Deployed by:** ${{ github.actor }}
+
+            ### Agents Deployed
+            - GENESIS_X (Orchestrator)
+            - BLAZE, ATLAS, TEMPO, WAVE (Fitness)
+            - SAGE, METABOL, MACRO (Nutrition)
+            - NOVA, SPARK, STELLA, LUNA, LOGOS (Other)
+
+  # Notify deployment status
+  notify:
+    name: Notify
+    needs: [deploy, smoke-tests]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Deployment Summary
+        run: |
+          if [ "${{ needs.smoke-tests.result }}" == "success" ]; then
+            echo "✅ Production deployment successful!"
+            echo ""
+            echo "📊 Deployment Details:"
+            echo "  Environment: production"
+            echo "  Project: ${{ env.GCP_PROJECT_ID }}"
+            echo "  Region: ${{ env.GCP_REGION }}"
+            echo "  Commit: ${{ github.sha }}"
+            echo "  Deployed by: ${{ github.actor }}"
+          else
+            echo "❌ Production deployment failed"
+            echo "Check the workflow logs for details"
+            echo ""
+            echo "🔄 Consider rolling back to the previous version"
+          fi

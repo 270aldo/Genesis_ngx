@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://genesis-ngx.com/schemas/invoke_request.schema.json",
+  "title": "InvokeRequest",
+  "description": "Schema for agent invocation requests in Genesis NGX",
+  "type": "object",
+  "required": ["agent_id", "message", "user_id"],
+  "properties": {
+    "agent_id": {
+      "type": "string",
+      "description": "Target agent identifier",
+      "enum": [
+        "genesis_x",
+        "blaze",
+        "atlas",
+        "tempo",
+        "wave",
+        "sage",
+        "metabol",
+        "macro",
+        "nova",
+        "spark",
+        "stella",
+        "luna",
+        "logos"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "description": "User message content",
+      "minLength": 1,
+      "maxLength": 10000
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Authenticated user identifier",
+      "format": "uuid"
+    },
+    "session_id": {
+      "type": ["string", "null"],
+      "description": "Optional session/conversation ID for context continuity",
+      "format": "uuid"
+    },
+    "budget_usd": {
+      "type": ["number", "null"],
+      "description": "Maximum budget for this invocation in USD",
+      "minimum": 0.01,
+      "maximum": 1.00,
+      "default": 0.10
+    },
+    "context": {
+      "type": ["object", "null"],
+      "description": "Additional context for the agent",
+      "properties": {
+        "user_goals": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "user_preferences": {
+          "type": "object"
+        },
+        "conversation_history_summary": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "request_id": {
+      "type": "string",
+      "description": "Unique request identifier for tracing",
+      "format": "uuid"
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "agent_id": "genesis_x",
+      "message": "Help me create a strength training program for muscle building",
+      "user_id": "550e8400-e29b-41d4-a716-446655440000",
+      "session_id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      "budget_usd": 0.10,
+      "request_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+    },
+    {
+      "agent_id": "blaze",
+      "message": "Calculate my 1RM for bench press. I did 80kg for 8 reps.",
+      "user_id": "550e8400-e29b-41d4-a716-446655440001",
+      "budget_usd": 0.05
+    }
+  ]
+}

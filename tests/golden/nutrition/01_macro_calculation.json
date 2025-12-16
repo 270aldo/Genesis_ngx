@@ -1,0 +1,32 @@
+{
+  "id": "nutrition-001",
+  "name": "Macro Calculation for Muscle Gain",
+  "description": "User requests macronutrient targets for muscle building",
+  "domain": "nutrition",
+  "expected_agents": ["genesis_x", "macro"],
+  "conversation": [
+    {
+      "role": "user",
+      "content": "I'm 80kg, 180cm tall, 28 years old male. I train 4x per week and want to build muscle. What should my macros be?"
+    },
+    {
+      "role": "assistant",
+      "agent": "macro",
+      "expected_behavior": {
+        "should_route_to": "macro",
+        "should_use_tool": "calculate_macros",
+        "should_mention": ["protein", "carbs", "fats", "calories"]
+      },
+      "validation_rules": {
+        "min_response_length": 200,
+        "must_contain_any": ["protein", "g/kg", "calories", "surplus"],
+        "must_not_contain": ["I cannot", "error"]
+      }
+    }
+  ],
+  "assertions": {
+    "latency_p95_ms": 2000,
+    "cost_max_usd": 0.02
+  },
+  "tags": ["nutrition", "macros", "muscle-gain", "macro"]
+}

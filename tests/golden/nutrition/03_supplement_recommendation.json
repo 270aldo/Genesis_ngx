@@ -1,0 +1,31 @@
+{
+  "id": "nutrition-003",
+  "name": "Supplement Stack Recommendation",
+  "description": "User asks about supplements for performance",
+  "domain": "nutrition",
+  "expected_agents": ["genesis_x", "nova"],
+  "conversation": [
+    {
+      "role": "user",
+      "content": "What supplements should I take for muscle building and recovery? I'm natural and train 5x per week."
+    },
+    {
+      "role": "assistant",
+      "agent": "nova",
+      "expected_behavior": {
+        "should_route_to": "nova",
+        "should_mention": ["creatine", "protein", "evidence-based"]
+      },
+      "validation_rules": {
+        "min_response_length": 200,
+        "must_contain_any": ["creatine", "protein", "supplement", "evidence"],
+        "must_not_contain": ["steroids", "illegal", "error"]
+      }
+    }
+  ],
+  "assertions": {
+    "latency_p95_ms": 2000,
+    "cost_max_usd": 0.02
+  },
+  "tags": ["nutrition", "supplements", "nova", "natural"]
+}

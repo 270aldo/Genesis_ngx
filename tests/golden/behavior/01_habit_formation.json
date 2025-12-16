@@ -1,0 +1,31 @@
+{
+  "id": "behavior-001",
+  "name": "Habit Formation Strategy",
+  "description": "User wants help building consistent workout habits",
+  "domain": "behavior",
+  "expected_agents": ["genesis_x", "spark"],
+  "conversation": [
+    {
+      "role": "user",
+      "content": "I keep starting workout programs but quit after 2-3 weeks. How can I build a lasting exercise habit?"
+    },
+    {
+      "role": "assistant",
+      "agent": "spark",
+      "expected_behavior": {
+        "should_route_to": "spark",
+        "should_mention": ["habit", "consistency", "small steps", "routine"]
+      },
+      "validation_rules": {
+        "min_response_length": 200,
+        "must_contain_any": ["habit", "routine", "consistent", "small", "start"],
+        "must_not_contain": ["error", "I cannot"]
+      }
+    }
+  ],
+  "assertions": {
+    "latency_p95_ms": 2000,
+    "cost_max_usd": 0.02
+  },
+  "tags": ["behavior", "habits", "spark", "consistency"]
+}
