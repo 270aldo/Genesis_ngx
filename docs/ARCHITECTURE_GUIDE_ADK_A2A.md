@@ -1,8 +1,9 @@
 # Arquitectura de Referencia para Sistemas Multi-Agente (ADK + A2A + GCP)
 
-**Versión del Documento:** 1.0
-**Fecha:** Noviembre 2025
-**Contexto:** Basado en la implementación exitosa de *Genesis NGX*.
+**Versión del Documento:** 2.0
+**Fecha:** Diciembre 2025
+**Contexto:** Basado en la implementación exitosa de *Genesis NGX* - Production Ready.
+**Status:** 13 agentes, Gateway FastAPI, Compliance LFPDPPP (México)
 
 ---
 
@@ -101,14 +102,95 @@ Para MVP y V1, usar HTTP REST (FastAPI) entre agentes es superior a colas de men
 
 ---
 
-## 7. Checklist para Nuevos Proyectos
+## 7. Gateway BFF (Backend for Frontend)
 
-1.  **Inicialización:** Crear repo + `requirements.txt` relajado.
-2.  **Infraestructura:** `terraform init` -> Habilitar APIs (manual o script bootstrap si Service Usage está off).
-3.  **Local:** `docker-compose` con montaje de credenciales.
-4.  **Validación:** Script de integración (`test_local_integration.py`) que pruebe el flujo completo (User -> Nexus -> Agent) en local antes del primer `gcloud run deploy`.
+En producción, los clientes no se comunican directamente con Agent Engine. Se usa un **Gateway FastAPI** como BFF.
+
+### 7.1. Arquitectura del Gateway
+
+```
+Client (Expo/Next.js)
+    │ HTTPS + JWT
+    ▼
+┌─────────────────────────────────────────┐
+│           GATEWAY (Cloud Run)            │
+├─────────────────────────────────────────┤
+│ 1. Request ID (X-Request-ID)            │
+│ 2. CORS (para web)                      │
+│ 3. Auth JWT (Supabase)                  │
+│ 4. Rate Limit (60/min user, 100/min IP) │
+│ 5. Budget Check (X-Budget-USD)          │
+│ 6. Structured Logging                   │
+├─────────────────────────────────────────┤
+│ 7. Orchestration Service                │
+│    └─> AgentEngineRegistry.invoke()     │
+│ 8. Persistence Service                  │
+│    └─> Supabase RPCs                    │
+└─────────────────────────────────────────┘
+    │ A2A Protocol
+    ▼
+Agent Engine (13 Agents)
+```
+
+### 7.2. Endpoints
+
+| Endpoint | Method | Auth | Descripción |
+|----------|--------|------|-------------|
+| `/v1/chat` | POST | JWT | Chat sincrónico |
+| `/v1/chat/stream` | POST | JWT | SSE streaming |
+| `/v1/conversations` | GET | JWT | Listar conversaciones |
+| `/health` | GET | No | Health check |
+| `/ready` | GET | No | Readiness probe |
+
+### 7.3. Middleware Stack
+
+```python
+app.add_middleware(CORSMiddleware, ...)
+app.add_middleware(RequestIDMiddleware)
+app.add_middleware(StructuredLoggingMiddleware)
+app.add_middleware(RateLimitMiddleware,
+    user_limit=60, ip_limit=100, window_seconds=60)
+```
 
 ---
 
-**Autor:** Gemini CLI (Asistente de Ingeniería)
+## 8. Compliance y Datos de Salud (LFPDPPP)
+
+Para mercados con regulación de datos de salud (México, UE, etc.):
+
+### 8.1. Sistema de Tiers
+
+| Tier | Datos | Consentimiento |
+|------|-------|----------------|
+| 1 | Peso, altura, pasos, calorías | Privacy Policy |
+| 2 | Grasa corporal, FC reposo | Checkbox adicional |
+| 3 | Glucosa, presión, ciclo | Excluido v1 |
+
+### 8.2. Implementación en Supabase
+
+```sql
+-- Trigger que valida consentimiento antes de INSERT
+CREATE TRIGGER trg_validate_health_metric_tier
+    BEFORE INSERT ON health_metrics
+    FOR EACH ROW
+    EXECUTE FUNCTION validate_health_metric_tier();
+```
+
+---
+
+## 9. Checklist para Nuevos Proyectos
+
+1.  **Inicialización:** Crear repo + `requirements.txt` relajado.
+2.  **Infraestructura:** Terraform con WIF para GitHub Actions.
+3.  **Agentes:** Implementar con patrón ADK, tests ≥80% coverage.
+4.  **Gateway:** FastAPI con middleware stack completo.
+5.  **Database:** Supabase con RLS + RPCs (SECURITY DEFINER).
+6.  **Compliance:** Implementar sistema de tiers si hay datos de salud.
+7.  **Observabilidad:** Alertas SLO + Runbooks.
+8.  **Validación:** Contract tests + Golden paths.
+
+---
+
+**Autor:** Gemini CLI (Asistente de Ingeniería) + Claude Code
 **Proyecto:** Genesis NGX
+**Última actualización:** 2025-12-15

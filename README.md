@@ -1,57 +1,78 @@
 # Genesis NGX
 
-Sistema multi-agente de bienestar (wellness) construido con Google ADK (Agent Development Kit), Gemini 2.5 y Supabase.
+Sistema multi-agente de bienestar (wellness) construido con Google ADK (Agent Development Kit), Gemini 2.5 y Supabase. **Listo para producción en México** con compliance LFPDPPP.
+
+> **Versión**: 1.0.0 | **Tests**: 1104+ | **Coverage**: 89% | **Status**: Production Ready
 
 ## Arquitectura
 
 ```
-                    ┌─────────────────────────────────┐
-                    │          GENESIS_X              │
-                    │       (Orchestrator - Pro)      │
-                    │  Intent Classification          │
-                    │  Agent Routing & Consensus      │
-                    └───────────────┬─────────────────┘
-                                    │
-        ┌───────────────────────────┼───────────────────────────┐
-        │                           │                           │
-┌───────▼───────┐          ┌────────▼────────┐         ┌───────▼───────┐
-│    FITNESS    │          │   NUTRITION     │         │    OTHER      │
-│               │          │                 │         │               │
-│ BLAZE: Fuerza │          │ SAGE: Strategy  │         │ SPARK: Habits │
-│ ATLAS: Movil. │          │ METABOL: TDEE   │         │ STELLA: Data  │
-│ TEMPO: Cardio │          │ MACRO: Macros   │         │ LUNA: Women   │
-│ WAVE: Recov.  │          │ NOVA: Supps     │         │ LOGOS: Educ.  │
-└───────────────┘          └─────────────────┘         └───────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                         CLIENTS                                      │
+│                  Expo Mobile / Next.js Web                          │
+└─────────────────────────────┬───────────────────────────────────────┘
+                              │ HTTPS + JWT
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    GATEWAY (FastAPI - Cloud Run)                    │
+│  ┌─────────┐ ┌──────────┐ ┌────────┐ ┌────────┐ ┌───────────────┐  │
+│  │Auth JWT │ │Rate Limit│ │ Budget │ │Logging │ │ Orchestration │  │
+│  └─────────┘ └──────────┘ └────────┘ └────────┘ └───────────────┘  │
+└─────────────────────────────┬───────────────────────────────────────┘
+                              │ A2A Protocol
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│              VERTEX AI AGENT ENGINE (13 Agents)                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                    ┌─────────────────────────────────┐              │
+│                    │          GENESIS_X              │              │
+│                    │       (Orchestrator - Pro)      │              │
+│                    └───────────────┬─────────────────┘              │
+│                                    │                                │
+│        ┌───────────────────────────┼───────────────────────────┐    │
+│        │                           │                           │    │
+│ ┌──────▼──────┐          ┌────────▼────────┐         ┌───────▼───┐ │
+│ │   FITNESS   │          │   NUTRITION     │         │   OTHER   │ │
+│ │             │          │                 │         │           │ │
+│ │ BLAZE: 💪  │          │ SAGE: Strategy  │         │ SPARK: 🔥 │ │
+│ │ ATLAS: 🧘  │          │ METABOL: TDEE   │         │ STELLA: 📊│ │
+│ │ TEMPO: 🏃  │          │ MACRO: Macros   │         │ LUNA: 🌙  │ │
+│ │ WAVE: 🌊   │          │ NOVA: Supps     │         │ LOGOS: 📚 │ │
+│ └─────────────┘          └─────────────────┘         └───────────┘ │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    SUPABASE (PostgreSQL + RLS)                      │
+│           Tiered Health Data | Consent System | RPC APIs            │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Modelos por Rol
 
-| Rol | Modelo | Agentes |
-|-----|--------|---------|
-| **Orquestador** | gemini-2.5-pro | GENESIS_X |
-| **Educación** | gemini-2.5-pro | LOGOS |
-| **Especialistas** | gemini-2.5-flash | 11 agentes |
+| Rol | Modelo | Agentes | Latency SLO |
+|-----|--------|---------|-------------|
+| **Orquestador** | gemini-2.5-pro | GENESIS_X | ≤6s |
+| **Educación** | gemini-2.5-pro | LOGOS | ≤6s |
+| **Especialistas** | gemini-2.5-flash | 11 agentes | ≤2s |
 
 ## Características
 
 - **Orquestador GENESIS_X**: Clasificación de intents y coordinación de agentes especializados
+- **Gateway FastAPI**: BFF (Backend for Frontend) con auth, rate limiting y budget tracking
 - **Framework ADK**: Google Agent Development Kit para definición nativa de agentes
 - **Gemini 2.5**: Pro para orquestación, Flash para agentes especializados
 - **Supabase**: PostgreSQL + RLS como única fuente de verdad
 - **Protocolo A2A v0.3**: JSON-RPC + SSE para comunicación inter-agentes
-- **Testing**: Suite completa con pytest (1045+ tests, 89% coverage)
+- **Compliance LFPDPPP**: Sistema de consentimiento por tiers para datos de salud
+- **Testing**: Suite completa con pytest (1104+ tests, 89% coverage)
 
 ## Estructura del Proyecto
 
 ```
 Genesis_ngx/
-├── agents/
+├── agents/                 # 13 Agentes ADK
 │   ├── genesis_x/          # Orquestador principal (Pro)
-│   │   ├── agent.py        # Definición del agente
-│   │   ├── tools.py        # FunctionTools
-│   │   ├── prompts.py      # System prompts
-│   │   └── tests/          # Tests unitarios e integración
-│   │
 │   ├── blaze/              # Fuerza e hipertrofia (Flash)
 │   ├── atlas/              # Movilidad y flexibilidad (Flash)
 │   ├── tempo/              # Cardio y resistencia (Flash)
@@ -64,19 +85,36 @@ Genesis_ngx/
 │   ├── stella/             # Analytics y reportes (Flash)
 │   ├── luna/               # Salud femenina (Flash)
 │   ├── logos/              # Educación (Pro) ⭐
-│   │
 │   └── shared/             # Código compartido
-│       ├── supabase_client.py
-│       ├── cost_calculator.py
-│       ├── security.py
-│       └── config.py
+│
+├── gateway/                # FastAPI BFF (Cloud Run)
+│   ├── api/v1/             # Endpoints REST
+│   ├── middleware/         # Auth, Rate Limit, Logging
+│   ├── services/           # Orchestration, Persistence
+│   └── tests/              # Tests del gateway
+│
+├── terraform/              # Infraestructura como código
+│   └── modules/            # WIF, Service Accounts
+│
+├── schemas/                # JSON Schemas (Contract Testing)
+├── tests/
+│   ├── contract/           # Contract tests
+│   └── golden/             # Golden path validations
+│
+├── monitoring/             # Alertas y dashboards
+│   └── alerts/             # SLO alerts (Cloud Monitoring)
+│
+├── supabase/               # Migraciones SQL
+│   └── migrations/         # 001_init, 002_health_tiers
+│
+├── docs/                   # Documentación
+│   ├── compliance/         # Verificación LFPDPPP
+│   ├── legal/              # Aviso de privacidad
+│   └── runbooks/           # Incident response
 │
 ├── ADR/                    # Architecture Decision Records
-├── docs/                   # Documentación técnica
-├── supabase/               # Migraciones SQL
-├── adk.yaml               # Configuración ADK
-├── requirements.txt       # Dependencias Python
-└── pytest.ini            # Configuración de tests
+├── adk.yaml                # Configuración ADK
+└── requirements.txt        # Dependencias Python
 ```
 
 ## Arranque Rápido
@@ -151,7 +189,7 @@ pytest --cov=agents --cov-report=html
 | LUNA | Salud Femenina | gemini-2.5-flash | 120 | ✅ Implementado |
 | **LOGOS** | **Educación** | **gemini-2.5-pro** | **140** | ✅ Implementado |
 
-**Total: 13 agentes, 1045+ tests**
+**Total: 13 agentes, 1104+ tests, 89% coverage**
 
 ## Testing
 
@@ -201,19 +239,70 @@ adk deploy --env production
 adk status
 ```
 
+## Gateway API
+
+El Gateway FastAPI actúa como BFF (Backend for Frontend) para clientes móviles y web.
+
+### Endpoints
+
+| Endpoint | Method | Auth | Descripción |
+|----------|--------|------|-------------|
+| `/v1/chat` | POST | JWT | Chat request/response |
+| `/v1/chat/stream` | POST | JWT | SSE streaming |
+| `/v1/conversations` | GET | JWT | Listar conversaciones |
+| `/v1/conversations/{id}` | GET | JWT | Obtener conversación |
+| `/health` | GET | No | Health check |
+| `/ready` | GET | No | Readiness probe |
+
+### Ejecutar Gateway
+
+```bash
+cd gateway
+uvicorn main:app --reload --port 8080
+```
+
+## Compliance (México)
+
+Sistema de consentimiento por tiers para datos de salud según LFPDPPP 2025.
+
+| Tier | Datos | Consentimiento |
+|------|-------|----------------|
+| **Tier 1** | Peso, altura, pasos, calorías, sueño | Privacy Policy |
+| **Tier 2** | Grasa corporal, FC reposo, calidad sueño | Checkbox adicional |
+| **Tier 3** | Glucosa, presión, ciclo menstrual | Excluido v1 |
+
+Ver [docs/compliance/backend-verification.md](docs/compliance/backend-verification.md) para detalles.
+
 ## Documentación
 
 - **[AGENTS.md](AGENTS.md)**: Guía de implementación de agentes
 - **[CLAUDE.md](CLAUDE.md)**: Contexto para Claude Code
 - **[GENESIS_PRD.md](GENESIS_PRD.md)**: Product Requirements Document
 - **[ADRs](ADR/)**: Architecture Decision Records
+- **[Runbooks](docs/runbooks/)**: Guías de respuesta a incidentes
+- **[Compliance](docs/compliance/)**: Verificación LFPDPPP
 
 ## Seguridad
 
 - ✅ RLS en Supabase para aislamiento de datos
 - ✅ Validación de PHI/PII en prompts
 - ✅ Budget enforcement por request
-- ✅ Rate limiting por agente
+- ✅ Rate limiting por usuario (60/min) e IP (100/min)
+- ✅ JWT validation con Supabase Auth
+- ✅ Sistema de consentimiento tiered (LFPDPPP)
+
+## Infraestructura
+
+```bash
+# Deploy Gateway a Cloud Run
+gcloud run deploy genesis-gateway \
+  --source=gateway/ \
+  --region=us-central1 \
+  --allow-unauthenticated
+
+# Deploy Agentes a Agent Engine
+adk deploy --env production
+```
 
 ## License
 
